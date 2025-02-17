@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.options{
+    position: relative;
+    overflow: hidden;
+}
+.options::after{
+    content: "";
+    position: absolute;
+    width: 30%;
+    height: 2px;
+    background-color: rgb(255, 249, 249);
+    bottom:0;
+    left: -100%;
+    transition: left 0.7s ease-in-out;
+}
+.options:hover::after{
+    left:0;
+}
+.options:hover{
+    transition: transform 0.2s ease;
+}
+
+@layer utilities{
+    .shadow-glow{
+        box-shadow: 0 0 20px 10px rgba(57, 113, 255, 0.5);
+    }
+}
