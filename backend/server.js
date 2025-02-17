@@ -1,9 +1,11 @@
 const express = require('express');
 const cors = require('cors');
-const mysql = require("mysql2")
-const session = require('express-session');
+const mysql = require("mysql2");
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
 
 const app = express();
+const SECRET_KEY = "key";
 
 app.use(cors({
     origin: "http://localhost:5173",
@@ -12,13 +14,7 @@ app.use(cors({
 }));
 
 app.use(express.json());
-
-app.use(session({
-    secret: 'key',
-    resave:false,
-    saveUninitialized:true,
-    cookie:{secure:false}
-}));
+app.use(cookieParser());
 
 const db = mysql.createConnection({
     host:"localhost",
@@ -41,16 +37,23 @@ app.get('/',(req,res)=>{
 
 app.post("/login", (req, res) => {
     const { email, password } = req.body;
-    const query = "SELECT * FROM user WHERE email = ? AND password = ?";
+    const query = "SELECT * FROM bussinessuser_table WHERE email = ? AND password = ?";
 
     db.query(query, [email, password], (err, result) => { 
         if (err) {
             res.status(500).json({ error: "Database error" }); 
         } else if (result.length > 0) {
             const user = result[0];
-            req.session.userEmail = user.email;
-            req.session.usertype = user.usertype;
-            res.json({ msg: "Login successful",email: user.email,usertype: user.usertype }); 
+            const token = jwt.sign({email:user.email,usertype: user.userType},SECRET_KEY, { expiresIn: '1h' });
+            
+            res.cookie('authToken',token,{
+                httpOnly:true,
+                secure:false,
+                sameSite:'strict',
+                maxAge:3600000
+            })
+
+            res.json({ msg: "Login successful", email: user.email, usertype: user.userType });
         } else {
             res.status(401).json({ err: "Invalid credentials" });  
         }
@@ -58,12 +61,33 @@ app.post("/login", (req, res) => {
 });
 
 app.get("/bussinessDashboard", (req, res) => {
-    if (req.session.userEmail) {
-        res.json({email: req.session.userEmail});
-    } else {
-        res.status(401).json({ error: "Unauthorized access" });
+    const token = req.cookies.authToken;
+    if(!token) {
+        return res.status(401).json({ error: "Unauthorized: No Token" });
     }
+
+    jwt.verify(token, SECRET_KEY, (err, decoded) => {
+        if (err) {
+            return res.status(401).json({ error: "Unauthorized: Invalid Token" });
+        }
+
+        const email = decoded.email;
+        const query = "SELECT fullname FROM bussinessuser_table WHERE email = ?";
+
+        db.query(query, [email], (err, result) => {
+            if (err) {
+                return res.status(500).json({ error: "Database error" });
+            }
+            if (result.length > 0) {
+                console.log(result[0].fullname);
+                res.json({ name: result[0].fullname });
+            } else {
+                res.status(404).json({ error: "User not found" });
+            }
+        });
+    });
 });
+
 
 app.listen(5000, () => {
     console.log("Server running on http://localhost:5000");

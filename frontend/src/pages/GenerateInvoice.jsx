@@ -28,8 +28,9 @@ const GenerateInvoice = () => {
             <h3 className="text-xl font-bold mb-4">Create New Client</h3>
             <form onSubmit={handleClientSubmit} className="flex flex-col gap-3">
               <input className="border p-2 rounded" name="name" placeholder="Client Name" required />
+              <input className="border p-2 rounded" name="name" placeholder="Company" required />
+              <input className="border p-2 rounded" name="name" placeholder="Email" required />
               <input className="border p-2 rounded" name="phone" placeholder="Phone Number" required />
-              <input className="border p-2 rounded" name="address" placeholder="Address" required />
               <button type="submit" className="bg-blue-600 text-white p-2 rounded">Save Client</button>
               <button type="button" className="text-red-500 mt-2" onClick={() => setShowModal(false)}>Cancel</button>
             </form>
@@ -41,7 +42,7 @@ const GenerateInvoice = () => {
         <div className='flex justify-between'>
           <h3 className='text-3xl font-bold text-blue-700 mt-2'>New Invoice</h3>
           <div className='flex gap-4'>
-            <a href="#" className='mt-4 mr-3 text-red-600 underline'>Cancel</a>
+            <a href="#" className='mt-4 mr-3 text-red-600 underline' onClick={() => window.history.back()}>Cancel</a>
             <button className='pt-1 pb-1 pr-4 pl-4 bg-blue-600 text-white mt-2 rounded'>Save</button>
           </div>
         </div>
@@ -55,13 +56,18 @@ const GenerateInvoice = () => {
           <div className='flex gap-20 mt-6'>
             <div className='flex flex-col w-1/4'>
               <div className='font-bold'>Billed to</div>
+              <div className='mt-2'>
+                <select name="" id="" className='p-1 w-40 rounded border border-2'>
+                  <option value="" >Select a Client</option>
+                </select>
+              </div>
               {!clientDetails && (
                 <button
                   type="button"
-                  className='text-blue-400 mt-5 underline hover:text-blue-600'
+                  className='text-blue-400 mt-5 text-base text-start hover:text-blue-600'
                   onClick={() => setShowModal(true)}
                 >
-                  + Create a Client
+                  + Create New Client
                 </button>
               )}
             </div>

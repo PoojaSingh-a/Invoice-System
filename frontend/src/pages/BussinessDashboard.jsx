@@ -3,25 +3,48 @@ import Footer from '../components/Footer';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const Dashboard = () => {
+const BussinessDashboard = () => {
+  const [name,setName] = useState(null);
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-
-  useEffect(() => {
-    axios.get('http://localhost:5000/bussinessDashboard', { withCredentials: true })
-      .then((response) => {
-        if (response.data.email) {
-          setEmail(response.data.email);
+  
+  useEffect(()=>{
+    const fetchUserData = async() => {
+      try{
+        const response = await fetch("http://localhost:5000/bussinessDashboard",{
+          method:"GET",
+          credentials:"include",
+        });
+        const data = await response.json();
+        if(response.ok){
+          setName(data.name);
         }
-      })
-      .catch((error) => {
-        console.error("Failed to fetch session data:", error);
-      });
-  }, []);
+        else{
+          console.log("Error: ",data.error);
+        }
+      }
+      catch(error){
+        console.error("Error fetching user data: ",error);
+      }
+    }
+    fetchUserData();
+  },[]);
 
   const GenerateInvoiceForm = () => {
     console.log("pressed");
     navigate("/generateInvoice");
+  };
+
+  const NavigateToHome = () => {
+    navigate('/bussinessDashboard');
+  };
+  const NavigateToInvoice = () => {
+    navigate('/allInvoices');
+  };
+  const NavigateToClient = () => {
+    navigate('/allClients');
+  };
+  const NavigatetoReport = () => {
+    navigate('/bussinessReport');
   };
 
   return (
@@ -30,16 +53,16 @@ const Dashboard = () => {
         <div className="left w-1/5 h-auto bg-blue-700">
           <h2 className="text-white font-bold text-4xl mt-10 ml-5">Dashboard</h2>
           <div className="text-2xl mt-20 ml-7">
-            <h3 className="options text-white mt-6">Home</h3>
-            <h3 className="options text-white mt-6">Invoices</h3>
-            <h3 className="options text-white mt-6">Clients</h3>
-            <h3 className="options text-white mt-6">Report</h3>
-            <h3 className="options text-white mt-6">Logout</h3>
+            <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToHome}>Home</h3>
+            <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToInvoice}>Invoices</h3>
+            <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToClient}>Clients</h3>
+            <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigatetoReport}>Report</h3>
+            <h3 className="options text-white mt-6 cursor-pointer" >Logout</h3>
           </div>
         </div>
         <div className="right w-4/5 h-auto flex flex-col">
           <h2 className="text-black font-bold text-3xl mt-12 ml-5">
-            {email ? `Welcome, ${email}` : "Loading..."}
+            {name ? `Welcome, ${name}` : "Loading..."}
           </h2>
 
           <div className="flex gap-20 mt-10">
@@ -71,4 +94,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default BussinessDashboard;
