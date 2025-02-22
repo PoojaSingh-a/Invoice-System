@@ -20,7 +20,7 @@
     left:0;
 }
 .options:hover{
-    transition: transform 0.2s ease;
+    transition: transform 0.0s ease;
 }
 
 @layer utilities{

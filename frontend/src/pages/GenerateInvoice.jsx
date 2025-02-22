@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Footer from '../components/Footer';
 
 const GenerateInvoice = () => {
@@ -6,10 +6,48 @@ const GenerateInvoice = () => {
   const [showModal, setShowModal] = useState(false);
   const [clientDetails, setClientDetails] = useState(null);
 
+  /** For Add task*/
   const addLine = () => {
-    setLines([...lines, { description: '', rate: '', qty: '' }]);
+      setLines([...lines, { description: '', rate: '', qty: '', gst: 0 }]);
   };
 
+  /**For getting details of the person making invoice from db */
+  const [name,setName] = useState('');
+  const [companyName,setCompanyName] = useState('');
+  const [phone,setPhone] = useState('');
+  const [city,setCity] = useState('');
+  const [allClients,setAllClientName] = useState([]);
+  const [invoiceNumber,setInvoiceNumber] = useState('');
+
+  useEffect(()=>{
+    const fetchUserData = async()=> {
+      try{
+        const response = await fetch("http://localhost:5000/generateInvoice",{
+          method:"GET",
+          credentials:"include",
+        });
+        const data = await response.json();
+        console.log("this comes from backend",data)
+        if(response.ok){
+          setName(data.name);
+          setCompanyName(data.companyName);
+          setPhone(data.phone);
+          setCity(data.city);
+          setAllClientName(data.allClients);
+          setInvoiceNumber(data.invoiceNumber);
+        }
+        else{
+          console.log("Error: ",data.error);
+        }
+      }
+      catch(error){
+        console.error("Error fetching user data: ",error);
+      }
+    }
+    fetchUserData();
+  },[]);
+
+  /** For the person for whom invoice is being made */
   const handleClientSubmit = (e) => {
     e.preventDefault();
     const name = e.target.name.value;
@@ -19,6 +57,83 @@ const GenerateInvoice = () => {
     setClientDetails({ name, phone, address });
     setShowModal(false);
   };
+
+  /**For Issue Date and Due Date */
+  const [issueDate,setIssueDate] = useState("");
+  const [dueDate,setDueDate] = useState("");
+
+  useEffect(()=>{
+    const currentDate = new Date();
+    const formattedIssueDate = currentDate.toISOString().split("T")[0];
+    setIssueDate(formattedIssueDate);
+
+    const nextMonthDate = new Date(currentDate);
+    nextMonthDate.setMonth(currentDate.getMonth() + 1);
+    const formattedDueDate = nextMonthDate.toISOString().split("T")[0];
+
+    setDueDate(formattedDueDate);
+  },[]);
+
+  /**For Calculation of GST*/
+  const handleLineChange  = (index,field,value)=>{
+    setLines(prevLines => 
+      prevLines.map((line,i)=>
+      i === index ? {...line,[field]: value}:line
+      )
+    )
+  }
+
+  const [gstValue,setgstValue] = useState([]);
+
+  const fetchGST = async(description,index)=>{
+    if(!description)
+        return;
+    try{
+      console.log("Got GST");
+      const response = await fetch(`http://localhost:5000/getGST?description=${encodeURIComponent(description)}`,{
+        method: "GET",
+        credentials: "include",
+      });
+
+      const data = await response.json();
+      if(response.ok){
+        //setgstValue(data.gst);
+        console.log("GST Value : ",data.gst);
+        setLines(prevLines => 
+          prevLines.map((line,i)=>
+            i === index ? {...line,gst:data.gst}:line
+          )
+        );
+      }
+      else{
+        console.error("Error fetching GST: ",data.error);
+      }
+    }
+    catch(error){
+      console.error("Error fetching GST : ",error);
+    }
+  };
+
+  const [itemPriceTotal,setItemPriceTotal] = useState();
+  const [gstTotal,setGstTotal] = useState();
+  const [grandTotal,setGrandTotal] = useState();
+
+  useEffect(() => {
+    let totalItemPrice = 0;
+    let totalGST = 0;
+
+    lines.forEach(line=>{
+      const itemTotal = (line.rate * line.qty);
+      const gstAmount = (itemTotal * line.gst)/100;
+      totalItemPrice += itemTotal;
+      totalGST += gstAmount;
+    });
+
+    setItemPriceTotal(totalItemPrice);
+    setGstTotal(totalGST);
+    setGrandTotal(totalItemPrice + totalGST);
+  },[lines]);
+
 
   return (
     <div className="min-h-screen flex flex-col justify-between items-center bg-gradient-to-l from-blue-100 to-blue-300 relative">
@@ -48,9 +163,10 @@ const GenerateInvoice = () => {
         </div>
         <form action="" className='mt-4 mb-7 bg-white p-6 rounded shadow-lg'>
           <div className='flex flex-col bg-zinc-100 p-3 rounded'>
-            <p className='mt-2'><strong>Name:</strong> {clientDetails?.name || 'Fetching from DB...'}</p>
-            <p className='mt-2'><strong>Phone:</strong> {clientDetails?.phone || 'Fetching from DB...'}</p>
-            <p className='mt-2'><strong>Address:</strong> {clientDetails?.address || 'Fetching from DB...'}</p>
+            <p className='mt-2'><strong>Name:  {name ? `${name}` : "Loading..."}</strong></p>
+            <p className='mt-2'><strong>Company Name:  {companyName ? `${companyName}` : "Loading..."}</strong></p>
+            <p className='mt-2'><strong>Phone: {phone ? `${phone}` : "Loading..."}</strong></p>
+            <p className='mt-2'><strong>Address: {city ? `${city}` : "Loading..."}</strong></p>
           </div>
 
           <div className='flex gap-20 mt-6'>
@@ -59,6 +175,9 @@ const GenerateInvoice = () => {
               <div className='mt-2'>
                 <select name="" id="" className='p-1 w-40 rounded border border-2'>
                   <option value="" >Select a Client</option>
+                  {allClients.map((client, index) => (
+                <option key={index} value={client}>{client}</option>
+            ))}
                 </select>
               </div>
               {!clientDetails && (
@@ -73,17 +192,17 @@ const GenerateInvoice = () => {
             </div>
             <div className='flex flex-col w-1/4'>
               <div className='text-gray-700'>Date of issue</div>
-              <input className='bg-zinc-200 p-2 rounded mt-2' type="date" />
+              <input className='bg-zinc-200 p-2 rounded mt-2' type="date" value={issueDate} onChange={(e)=> setToday(e.target.value)}/>
               <div className='text-gray-700 mt-4'>Due Date</div>
-              <input className='bg-zinc-200 p-2 rounded mt-2' type="date" />
+              <input className='bg-zinc-200 p-2 rounded mt-2' type="date" value={dueDate} onChange={(e)=> setDueDate(e.target.value)} />
             </div>
             <div className='flex flex-col w-1/4 items-center'>
               <div className='text-gray-700 mt-6'>Invoice number</div>
-              <div className='mt-2 bg-zinc-200 p-2 rounded w-32 text-center'>INV101</div>
+              <div className='mt-2 bg-zinc-200 p-2 rounded w-32 text-center text-gray-600'>{invoiceNumber}</div>
             </div>
             <div className='flex flex-col w-1/4 items-center'>
               <div className='text-2xl font-bold mt-6'>Total Amount</div>
-              <div className='mt-3 text-2xl text-green-700 font-semibold'>Rs.12,034</div>
+              <div className='mt-3 text-2xl text-green-700 font-semibold'>{grandTotal}</div>
             </div>
           </div>
 
@@ -92,15 +211,30 @@ const GenerateInvoice = () => {
             <div className='w-1/2'>Description</div>
             <div className='w-1/6'>Rate</div>
             <div className='w-1/6'>Qty</div>
-            <div className='w-1/6'>Line Total</div>
+            <div className='w-1/6 text-center'>Line Total</div>
+            <div className='w-1/6 text-center'>After GST</div>
           </div>
 
           {lines.map((line, index) => (
             <div key={index} className='flex text-zinc-500 mt-2'>
-              <input className='bg-zinc-200 p-2 rounded w-1/2' type="text" placeholder="Description" />
-              <input className='bg-zinc-200 p-2 rounded w-1/6 ml-4' type="number" placeholder="Rate" />
-              <input className='bg-zinc-200 p-2 rounded w-1/6 ml-4' type="number" placeholder="Qty" />
-              <input className='bg-zinc-200 p-2 rounded w-1/6 ml-4' type="text" placeholder="Line Total" readOnly />
+              <input
+        className="bg-zinc-200 p-2 rounded w-2/5"
+        type="text"
+        placeholder="Description"
+        onChange={(e) => {
+          const value = e.target.value;
+          handleLineChange(index, "description", value);
+        }}
+        onBlur={(e) =>{
+          fetchGST(e.target.value,index); // Fetch GST
+        }
+        }
+      />
+              <input className='bg-zinc-200 p-2 rounded w-1/6 ml-4' type="number" placeholder="Rate" onChange={(e) => handleLineChange(index,"rate",e.target.value)} />
+              <input className='bg-zinc-200 p-2 rounded w-1/6 ml-4' type="number" placeholder="Qty" onChange={(e) => handleLineChange(index,"qty",e.target.value)} />
+              <input className='bg-zinc-200 p-2 rounded w-1/6 ml-4' type="text" placeholder="Line Total" value={line.rate * line.qty || 0} readOnly />
+              <input placeholder='Adding GST' className='bg-zinc-200 p-2 rounded w-1/6 ml-4' value={(line.rate * line.qty) + ((line.rate * line.qty) * line.gst) / 100 || 0}
+              />
             </div>
           ))}
 
@@ -111,16 +245,16 @@ const GenerateInvoice = () => {
           <div className='flex flex-col items-end mt-6'>
             <div className='flex justify-between w-1/4'>
               <div className='font-semibold'>Subtotal:</div>
-              <div>100</div>
+              <div>{itemPriceTotal}</div>
             </div>
             <div className='flex justify-between w-1/4 mt-2'>
               <div className='font-semibold'>Tax:</div>
-              <div>100</div>
+              <div>{gstTotal}</div>
             </div>
             <hr className='w-1/4 my-2 border-gray-400' />
             <div className='flex justify-between w-1/4'>
               <div className='font-bold'>Total:</div>
-              <div className='font-bold'>12,034</div>
+              <div className='font-bold'>{grandTotal}</div>
             </div>
           </div>
           <div className='flex justify-end'>

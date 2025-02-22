@@ -47,6 +47,17 @@ const BussinessDashboard = () => {
     navigate('/bussinessReport');
   };
 
+  const handleLogout = async() => {
+    try{
+      const response = await axios.post('http://localhost:5000/logout',{},{withCredentials:true});
+      if(response.status === 200)
+        alert("Logout sucessfully");
+          navigate('/login');
+    }
+    catch(error){
+      console.error("Logout failed: ",error);
+    }
+  }
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-gradient-to-l from-blue-100 to-blue-300">
       <div className="flex flex-1">
@@ -57,7 +68,7 @@ const BussinessDashboard = () => {
             <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToInvoice}>Invoices</h3>
             <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToClient}>Clients</h3>
             <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigatetoReport}>Report</h3>
-            <h3 className="options text-white mt-6 cursor-pointer" >Logout</h3>
+            <h3 className="options text-white mt-6 cursor-pointer" onClick={handleLogout}>Logout</h3>
           </div>
         </div>
         <div className="right w-4/5 h-auto flex flex-col">
