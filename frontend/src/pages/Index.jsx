@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 const images = Object.values(import.meta.glob("../assets/*.png", { eager: true })).map((img) => img.default);
 
 const Index = () => {
-  const navigate = useNavigate(); // ✅ Define useNavigate inside the correct component
+  const navigate = useNavigate(); 
 
   const handleLoginRedirect = () => {
     navigate("/login");
@@ -43,7 +43,7 @@ const Index = () => {
             </button>
             <button
               className="bg-gray-700 hover:bg-gray-900 text-white px-6 py-3 rounded-lg shadow-md text-lg transition duration-300"
-              onClick={handleLoginRedirect} // ✅ Now this works correctly
+              onClick={handleLoginRedirect} 
             >
               Login
             </button>

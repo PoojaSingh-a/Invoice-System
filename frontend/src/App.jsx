@@ -9,8 +9,10 @@ import GenerateInvoice from "./pages/GenerateInvoice";
 import AllInvoices from "./pages/AllInvoices";
 import AllClients from "./pages/AllClients";
 import BussinessReport from "./pages/BussinessReport";
+import EditInvoiceForm from "./pages/EditInvoiceForm";
+import InvoiceReadMore from "./pages/InvoiceReadMore";
+
 const App = () => {
-  
   return (
     <Router>
       <Routes>
@@ -23,6 +25,8 @@ const App = () => {
         <Route path="/allInvoices" element={<AllInvoices/>}/>
         <Route path="/allClients" element={<AllClients/>}/>
         <Route path="/bussinessReport" element={<BussinessReport/>}/>
+        <Route path="/editInvoiceForm" element={<EditInvoiceForm/>} />
+        <Route path="/InvoiceReadMore/:invoiceNumber" element={<InvoiceReadMore />} />
       </Routes>
     </Router>
   )
