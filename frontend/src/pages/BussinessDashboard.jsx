@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import Footer from '../components/Footer';
-import { useNavigate } from 'react-router-dom';
+import Navbar from '../components/Navbar';
 import axios from 'axios';
 import { ToastContainer, toast } from "react-toastify";
+import { useNavigate } from 'react-router-dom';
 import "react-toastify/dist/ReactToastify.css";
 
 const BussinessDashboard = () => {
@@ -20,7 +21,7 @@ const BussinessDashboard = () => {
 
       const invoiceData = await invoiceResponse.json();
       if (invoiceResponse.ok) {
-        setRecentInvoice(invoiceData.invoice);  // Ensure correct access
+        setRecentInvoice(invoiceData.invoice);  
       } else {
         console.log("Error fetching invoice:", invoiceData.error);
         setRecentInvoice(null);
@@ -31,7 +32,6 @@ const BussinessDashboard = () => {
     }
   };
 
-  // Fetch user and invoice data inside useEffect
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -54,16 +54,14 @@ const BussinessDashboard = () => {
     fetchUserData();
   }, []);
 
-  // Call `fetchRecentInvoice` when `name` is set
   useEffect(() => {
     if (name) {
       fetchRecentInvoice();
     }
-  }, [name]); // Runs when `name` is updated
+  }, [name]);
 
 
   const GenerateInvoiceForm = () => {
-    console.log("pressed");
     navigate("/generateInvoice");
   };
 
@@ -71,34 +69,6 @@ const BussinessDashboard = () => {
     navigate("/editInvoiceForm");
   }
 
-  const NavigateToHome = () => {
-    navigate('/bussinessDashboard');
-  };
-  const NavigateToInvoice = () => {
-    navigate('/allInvoices');
-  };
-  const NavigateToClient = () => {
-    navigate('/allClients');
-  };
-  const NavigatetoReport = () => {
-    navigate('/bussinessReport');
-  };
-
-  const handleLogout = async () => {
-    try {
-      const response = await axios.post('http://localhost:5000/logout', {}, { withCredentials: true });
-  
-      if (response.status === 200) {
-        toast.error(response.data.msg);
-        setTimeout(() => {
-          navigate("/");
-        }, 500);
-      }
-    } catch (error) {
-      console.error("Logout failed: ", error);
-    }
-  };
-  
   const invoiceReadMore = async () => {
     navigate(`/InvoiceReadMore/${recentInvoice.invoiceNumber}`);
   }
@@ -106,16 +76,7 @@ const BussinessDashboard = () => {
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-gradient-to-l from-blue-100 to-blue-300">
       <div className="flex flex-1">
-        <div className="left w-1/5 h-auto bg-blue-700">
-          <h2 className="text-white font-bold text-4xl mt-10 ml-5">Dashboard</h2>
-          <div className="text-2xl mt-20 ml-7">
-            <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToHome}>Home</h3>
-            <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToInvoice}>Invoices</h3>
-            <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToClient}>Clients</h3>
-            <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigatetoReport}>Report</h3>
-            <h3 className="options text-white mt-6 cursor-pointer" onClick={handleLogout}>Logout</h3>
-          </div>
-        </div>
+        <Navbar />
         <div className="right w-4/5 h-auto flex flex-col">
           <h2 className="text-black font-bold text-3xl mt-12 ml-5">
             {name ? `Welcome, ${name}` : "Loading..."}

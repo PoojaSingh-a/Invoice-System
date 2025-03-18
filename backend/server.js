@@ -34,6 +34,9 @@ app.get('/',(req,res)=>{
     res.send("Invoing system backend running");
 })
 
+let token;
+let email; //logged in user's email
+
 app.post("/login", (req, res) => {
     const { email, password } = req.body;
     const query = "SELECT * FROM bussinessuser_table WHERE email = ? AND password = ?";
@@ -59,8 +62,18 @@ app.post("/login", (req, res) => {
     });
 });
 
-let token;
-let email; //logged in user's email
+app.get("/check-auth",(req,res)=>{
+    token = req.cookies.authToken;
+    if(!token){
+        return res.status(401).json({authenticated:false,error:"No token set"});
+    }
+    jwt.verify(token,SECRET_KEY,(err,decoded)=>{
+        if(err){
+            return res.status(401).json({authenticated:false,error:"Invalid token"});
+        }
+        res.json({authenticated:true,usertype:decoded.userType});
+    });
+});
 
 app.get("/bussinessDashboard", (req, res) => {
      token = req.cookies.authToken;
@@ -202,7 +215,6 @@ app.get("/getGST", async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
-
 
 app.post("/saveInvoice",async(req,res)=>{
     const{
@@ -376,8 +388,10 @@ app.get("/getEditInvoiceData", (req, res) => {
 
 app.get("/allClientData",(req,res)=>{
     //here we will get name of the bussiness later on 
-    const query = "SELECT * FROM businessclients_table";
-    db.query(query,(err,result)=>{
+    const {companyName} = req.query;
+    //console.log("Company name is backend is : ",companyName);
+    const query = "SELECT * FROM businessclients_table WHERE companyName = ?";
+    db.query(query,companyName,(err,result)=>{
         if(err){
             return res.status(500).json({error:"Database error"});
         }
@@ -391,13 +405,13 @@ app.get("/allClientData",(req,res)=>{
 
 app.post("/createClient", async (req, res) => {
     try {
-      const { fullname, email, phone } = req.body;
-      const query = "INSERT INTO businessclients_table (fullname, email, phone) VALUES (?, ?, ?)";
-      const values = [fullname, email, phone];
+      const { fullname, email, companyName, phone } = req.body;
+      const query = "INSERT INTO businessclients_table (fullname, email, companyName, phone) VALUES (?, ?, ?, ?)";
+      const values = [fullname, email, companyName, phone];
   
       db.query(query, values, (err, result) => {
         if (err) {
-          console.error(err);
+         // console.error(err);
           return res.status(500).json({ error: "Database error" });
         }
         res.status(201).json({ message: "Client added successfully!" });
@@ -405,6 +419,23 @@ app.post("/createClient", async (req, res) => {
     } catch (error) {
       res.status(500).json({ error: "Server error" });
     }
+  });
+  
+  app.get("/companyName", async (req, res) => {
+    const { email } = req.query;
+    const query = "SELECT companyName FROM bussinessuser_table WHERE email = ?";
+  
+    db.query(query, [email], (err, result) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: "Database error" });
+      }
+      if (result.length === 0) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+      res.status(200).json({ companyName: result[0].companyName });
+      //console.log("Company name is: ", result[0].companyName);
+    });
   });
   
 

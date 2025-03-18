@@ -293,7 +293,7 @@ const GenerateInvoice = () => {
       </div>
       <ToastContainer position="top-right" autoClose={3000} />
       <Footer />
-    {isFormOpen && <NewClientForm onClose={() => setIsFormOpen(false)} />}
+    {isFormOpen && <NewClientForm onClose={() => setIsFormOpen(false)} companyName={companyName} />}
     </div>
   );
 };
