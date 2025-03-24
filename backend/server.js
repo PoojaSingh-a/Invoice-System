@@ -3,6 +3,7 @@ const cors = require('cors');
 const mysql = require("mysql2");
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
+const sendEmail = require("./sendEmail");
 
 const app = express();
 const SECRET_KEY = "key";
@@ -419,7 +420,7 @@ app.post("/createClient", async (req, res) => {
     } catch (error) {
       res.status(500).json({ error: "Server error" });
     }
-  });
+});
   
   app.get("/companyName", async (req, res) => {
     const { email } = req.query;
@@ -436,9 +437,42 @@ app.post("/createClient", async (req, res) => {
       res.status(200).json({ companyName: result[0].companyName });
       //console.log("Company name is: ", result[0].companyName);
     });
+});
+  
+app.get("/allInvoicesCreated", (req, res) => {
+    const email = req.query.email;
+    console.log("The email is: ",email)
+    if (!email) {
+        return res.status(400).json({ error: "email is required" });
+    }
+    const query = `SELECT * FROM allinvoices_table WHERE billerEmail = ?`;
+    db.query(query, [email], (err, result) => {
+        if (err) {
+            console.error("Error fetching invoices:", err);
+            return res.status(500).json({ error: "Database error" });
+        }
+        if (result.length === 0) {
+            return res.status(200).json({ invoice: null });
+        }
+        console.log(result);
+        res.status(200).json({data:result});
+    });
+});
+
+app.post("/sendInvoiceEmail", async (req, res) => {
+    const { senderEmail, recipietEmail, clientName } = req.body;
+    console.log("Sender email is : ", senderEmail);
+    console.log("Recipient email is : ", recipietEmail);
+    console.log("Client name is : ", clientName);
+  
+    try {
+      await sendEmail(senderEmail, recipietEmail, clientName);
+      res.json({ success: true, message: "Invoice email sent successfully" });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to send email" });
+    }
   });
   
-
 app.listen(5000, () => {
     console.log("Server running on http://localhost:5000");
 });

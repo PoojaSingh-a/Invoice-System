@@ -188,6 +188,35 @@ const GenerateInvoice = () => {
   const deleteItem = (index) => {
     setLines(prevLines => prevLines.filter((_, i) => i !== index));
   };
+
+  const sendInvoiceEmail = async (event) => {
+    event.preventDefault();
+    //console.log("Client name: ", selectedClient);
+    //console.log("Client email is : ", selectedEmail);
+    try {
+      const response = await fetch('http://localhost:5000/sendInvoiceEmail', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          //can we just change the invoice to the name of the person and then send
+          senderEmail: "invoice@resend.dev", //Always email are sent from this email, how can we send email using someone else email id (email spoofing) 
+                                                //for this we used resend API.
+          recipietEmail: selectedEmail,
+          clientName: selectedClient,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Invoice email sent successfully.");
+      } else {
+        toast.error(`Error: ${data.message}`);
+      }
+    } catch (error) {
+      console.error("Error sending email: ", error);
+      toast.error("Failed to send invoice email.");
+    }
+  };
+  
   
   return (
     <div className="min-h-screen flex flex-col justify-between items-center bg-gradient-to-l from-blue-100 to-blue-300 relative">
@@ -287,7 +316,7 @@ const GenerateInvoice = () => {
             </div>
           </div>
           <div className='flex justify-end'>
-            <button className='bg-blue-600 mt-5 w-40 p-3 font-bold text-white rounded hover:bg-blue-700 transition duration-300'>Send to Client</button>
+            <button className='bg-blue-600 mt-5 w-40 p-3 font-bold text-white rounded hover:bg-blue-700 transition duration-300' onClick={sendInvoiceEmail}>Send to Client</button>
           </div>
         </form>
       </div>

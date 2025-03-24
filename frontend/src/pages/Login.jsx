@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -7,6 +7,13 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(()=>{
+    if(location.state?.message){
+      toast.error(location.state.message, { autoClose: 1000 });
+    }
+  },[location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,7 +38,7 @@ const Login = () => {
           } else {
             navigate("/clientDashboard");
           }
-        }, 1000); // Delay navigation to let toast show
+        }, 1000);
       } else {
         toast.error(data.err); 
       }
@@ -65,8 +72,7 @@ const Login = () => {
           Submit
         </button>
       </form>
-
-      {/* Place ToastContainer inside return statement */}
+      
       <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );

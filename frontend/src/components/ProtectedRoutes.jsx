@@ -16,6 +16,7 @@ const ProtectedRoute = () => {
                 if (data.authenticated) {
                     setIsAuthenticated(true);
                 } else {
+                    
                     setIsAuthenticated(false);
                 }
             } catch (error) {
@@ -27,8 +28,17 @@ const ProtectedRoute = () => {
         checkAuth();
     }, []);
 
-    if (isAuthenticated === null) return <p>Loading...</p>; // Show loading while checking auth
-    return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
+    if (isAuthenticated === null) { 
+        return (
+            <div className="flex justify-center items-center min-h-screen bg-gray-100">
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-blue-700 text-xl mt-3 font-semibold">Loading...</p>
+              </div>
+            </div>
+          );
+    } 
+    return isAuthenticated ? <Outlet /> : <Navigate to="/login" state={{message:"You must Log in first!"}}/>;
 };
 
 export default ProtectedRoute;
