@@ -193,14 +193,18 @@ const GenerateInvoice = () => {
     event.preventDefault();
     //console.log("Client name: ", selectedClient);
     //console.log("Client email is : ", selectedEmail);
+    //here we need to make the email id by adding name of the client
+    const name = selectedClient.replace(/\s+/g,"").toLowerCase();
+    const email = name+"@resend.dev"; //sort out later domain stuff
     try {
       const response = await fetch('http://localhost:5000/sendInvoiceEmail', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           //can we just change the invoice to the name of the person and then send
-          senderEmail: "invoice@resend.dev", //Always email are sent from this email, how can we send email using someone else email id (email spoofing) 
-                                                //for this we used resend API.
+          senderEmail: email, //Always email are sent from this email, how can we send email using someone else email id (email spoofing) 
+                                                //for this we 
+                                                // used resend API.
           recipietEmail: selectedEmail,
           clientName: selectedClient,
         }),
@@ -208,8 +212,41 @@ const GenerateInvoice = () => {
       const data = await response.json();
       if (data.success) {
         toast.success("Invoice email sent successfully.");
-      } else {
-        toast.error(`Error: ${data.message}`);
+        try {
+          const response = await fetch("http://localhost:5000/generateInvoicePDF", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body:JSON.stringify({
+              lines,
+              name, //person who make invoice
+              companyName,
+              bemail,
+              phone, //person who make invoice
+              city, //person who make invoice
+              selectedClient,
+              selectedEmail,
+              issueDate,
+              dueDate,
+              invoiceNumber,
+              itemPriceTotal,
+              gstTotal,
+              grandTotal,
+            })
+          });
+    
+          if (response.ok) {
+            const blob = await response.blob();
+            const pdfUrl = window.URL.createObjectURL(blob);
+            // Open in a new tab instead of forcing a download
+            window.open(pdfUrl, "_blank");
+          } else {
+            console.error("Failed to generate PDF");
+          }
+        } catch (error) {
+          console.error("Error:", error);
+        }
       }
     } catch (error) {
       console.error("Error sending email: ", error);

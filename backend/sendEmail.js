@@ -9,7 +9,7 @@ async function sendEmail(senderEmail, recipietEmail, clientName) {
       subject: 'Your Invoice',
       text: `This is an invoice for ${clientName}.`,
     });
-    console.log("Email sent successfully.", response);
+    //console.log("Email sent successfully.", response);
   } catch (error) {
     console.error('Error sending email: ', error);
   }
