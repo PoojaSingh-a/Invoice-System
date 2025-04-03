@@ -1,5 +1,4 @@
 const { Resend } = require('resend');
-
 const resend = new Resend('re_TANhsRc5_F3Y6hyxyxMGTHRvieuqnEMHz'); // Replace with actual API key
 
 async function sendEmail(senderEmail, recipientEmail, clientName, pdfBase64) {
@@ -22,7 +21,6 @@ async function sendEmail(senderEmail, recipientEmail, clientName, pdfBase64) {
                 },
             ],
         });
-
         console.log("Email sent successfully.", response);
     } catch (error) {
         console.error("Error sending email:", error);

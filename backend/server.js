@@ -20,10 +20,11 @@ app.use(
   })
 );
 
+app.use(bodyParser.json({ limit: "50mb" })); // increases the allowed payload size to 50MB for bigger PDFs.
+app.use(bodyParser.urlencoded({ limit: "50mb", extended: true })); //ensures that complex json objects are properly parsed.
 app.use(express.json());
 app.use(cookieParser());
 app.use("/invoices", express.static(path.join(__dirname, "invoices"))); // Serve static files (PDFs)
-
 
 const db = mysql.createConnection({
   host: "localhost",
@@ -513,69 +514,258 @@ app.get("/allInvoicesCreated", (req, res) => {
 });
 
 app.post("/generateInvoicePDF", async (req, res) => {
-    try {
-        const browser = await puppeteer.launch();
-        const page = await browser.newPage();
+  try {
+    const browser = await puppeteer.launch(); //starts a headless chrome browser 
+    const page = await browser.newPage(); //opens a new browser tab.
 
-        // HTML Content for Invoice
-        const content = `
-            <html>
-                <body>
-                    <h1>Invoice for ${req.body.selectedClient}</h1>
-                    <p>Invoice Number: ${req.body.invoiceNumber}</p>
-                    <p>Issue Date: ${req.body.issueDate}</p>
-                    <p>Due Date: ${req.body.dueDate}</p>
-                    <p>Total: ${req.body.grandTotal}</p>
-                </body>
-            </html>
-        `;
-        await page.setContent(content);
+    // HTML Content for Invoice
+    let itemsHtml = "";
+    req.body.lines.forEach((item) => {
+      itemsHtml += `
+      <tr>
+        <td>${item.description}</td>
+        <td>${item.rate}</td>
+        <td>${item.qty}</td>
+        <td>${item.rate * item.qty}</td>
+        <td>${item.rate * item.qty + (item.rate * item.qty * item.gst) / 100}</td>
+      </tr>`
+      ;
+    });
 
-        // Ensure 'invoices' directory exists
-        const invoicesDir = path.join(__dirname, "invoices");
-        if (!fs.existsSync(invoicesDir)) {
-            fs.mkdirSync(invoicesDir);
+    const content = `
+           <!DOCTYPE html>
+           <html lang="en">
+           <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Invoice Form</title>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+             body {
+              font-family: 'Poppins', sans-serif;
+              background-color: #f8f9fa;
+              margin: 0;
+              padding: 20px;
+            }
+
+            .outer {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+            background: #fff;
+            padding: 20px;
+            max-width: 800px;
+            margin: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
-        const fileName = `invoice_${Date.now()}.pdf`;
-        const filePath = path.join(invoicesDir, fileName);
+        .headingDiv {
+            text-align: center;
+            width: 100%;
+            padding-bottom: 10px;
+        }
 
-        await page.pdf({ path: filePath, format: "A4" });
+        .heading {
+            font-size: 26px;
+            font-weight: 600;
+            color: #333;
+        }
 
-        await browser.close();
+        hr {
+            width: 100%;
+            border: none;
+            height: 2px;
+            background: #ddd;
+            margin: 10px 0;
+        }
 
-        // Convert PDF to Base64 for email
-        const pdfBase64 = fs.readFileSync(filePath).toString("base64");
+        .content {
+            width: 100%;
+            padding: 20px;
+        }
 
-        res.json({
-            success: true,
-            pdfUrl: `http://localhost:5000/invoices/${fileName}`,  // Public URL for download
-            pdfBase64: pdfBase64  // Send Base64 string for email attachment
-        });
+        .section {
+            background-color: #f1f1f1;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
 
-    } catch (error) {
-        console.error("Error generating PDF:", error);
-        res.status(500).json({ success: false, message: "Failed to generate PDF" });
+        .invoiceDetails2 {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .invoiceDetails2 div {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        p {
+            margin: 5px 0;
+        }
+
+        input[type="date"] {
+            border: 1px solid #ccc;
+            padding: 6px;
+            width: 100%;
+            border-radius: 4px;
+            background: white;
+            font-size: 14px;
+        }
+
+        .table-container {
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background: #007bff;
+            color: white;
+        }
+
+        .totalAmount {
+            text-align: right;
+            margin-top: 20px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="outer">
+        <div class="headingDiv">
+            <h3 class="heading">Invoice Form</h3>
+        </div>
+        <hr />
+
+        <div class="content">
+            <!-- Sender Details -->
+            <div class="section">
+                <p><b>Name:</b> ${req.body.name}</p>
+                <p><b>Company:</b> ${req.body.companyName}</p>
+                <p><b>Phone:</b> ${req.body.phone}</p>
+                <p><b>Address:</b> ${req.body.city}</p>
+            </div>
+
+            <!-- Invoice Details -->
+            <div class="section">
+                <div>
+                    <p><b>Billed to:</b> ${req.body.selectedClient}</p>
+                    <p>${req.body.selectedEmail}</p>
+                </div>
+                <div class="invoiceDetails2">
+                    <div>
+                        <p><b>Issue Date:</b></p>
+                        <input type="date" value=${req.body.issueDate} />
+                    </div>
+                    <div>
+                        <p><b>Due Date:</b></p>
+                        <input type="date" value=${req.body.dueDate}/>
+                    </div>
+                    <div>
+                        <p><b>Invoice Number:</b> ${req.body.invoiceNumber}</p>
+                    </div>
+                    <div>
+                        <p><b>Total Amount:</b> ₹${req.body.grandTotal}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Item Details -->
+            <div class="table-container">
+                <p style="font-weight: bold;">Item List</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>Rate (₹)</th>
+                            <th>Qty</th>
+                            <th>Line Total (₹)</th>
+                            <th>After GST (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsHtml}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Total Amount -->
+            <div class="totalAmount">
+                <p><b>GST Total:</b> ₹${req.body.gstTotal}</p>
+                <p><b>Grand Total:</b> ₹${req.body.grandTotal}</p>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>;`
+
+    await page.setContent(content); //loads the generated html into the browser.
+
+    // Ensure 'invoices' directory exists
+    //this line creates a file path for "invoices" directory
+    const invoicesDir = path.join(__dirname, "invoices");
+    if (!fs.existsSync(invoicesDir)) {
+      fs.mkdirSync(invoicesDir); //creates a folder if not present
     }
+
+    const fileName = `invoice_${Date.now()}.pdf`;
+    const filePath = path.join(invoicesDir, fileName);
+
+    await page.pdf({ path: filePath, format: "A4" }); //converts the loaded html to a pdf file at filepath.
+
+    await browser.close(); //close browser to free up sys resources
+
+    // Convert PDF to Base64 for email
+    //pdfBase64 is a base64-encoded representation of a pdf file. Instead of sending a raw pdf file,we convert it into a string using base64 encoding.
+
+    //Base64 is a way to convert binary data into a text string.this makes it safe to store and transmit
+
+    //fs.readFileSync(filePath) - Reads the pdf file as raw binary data.
+    const pdfBase64 = fs.readFileSync(filePath).toString("base64");
+
+    res.json({
+      success: true,
+      pdfUrl: `http://localhost:5000/invoices/${fileName}`, // Public URL for download
+      pdfBase64: pdfBase64, // Send Base64 string for email attachment
+    });
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    res.status(500).json({ success: false, message: "Failed to generate PDF" });
+  }
 });
 
 app.post("/sendInvoiceEmail", async (req, res) => {
-    console.log("Email sending request received!");
-    const { senderEmail, recipientEmail, clientName, pdfBase64 } = req.body;
+  console.log("Email sending request received!");
+  const { senderEmail, recipientEmail, clientName, pdfBase64 } = req.body;
 
-    try {
-        await sendEmail(senderEmail, recipientEmail, clientName, pdfBase64);
-        res.json({ success: true, message: "Invoice email sent successfully" });
-    } catch (error) {
-        console.error("Error sending email:", error);
-        res.status(500).json({ success: false, message: "Failed to send email" });
-    }
+  try {
+    await sendEmail(senderEmail, recipientEmail, clientName, pdfBase64);
+    res.json({ success: true, message: "Invoice email sent successfully" });
+  } 
+  catch (error) {
+    console.error("Error sending email:", error);
+    res.status(500).json({ success: false, message: "Failed to send email" });
+  }
 });
-
-
-
-
-
 
 app.listen(5000, () => {
   console.log("Server running on http://localhost:5000");

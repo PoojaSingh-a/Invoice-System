@@ -191,7 +191,6 @@ const GenerateInvoice = () => {
 
   const sendInvoiceEmail = async (event) => {
     event.preventDefault();
-    
     const name = selectedClient.replace(/\s+/g, "").toLowerCase();
     const email = name + "@resend.dev"; // Dummy email, replace later.
 
@@ -205,17 +204,14 @@ const GenerateInvoice = () => {
                 issueDate, dueDate, invoiceNumber, itemPriceTotal, gstTotal, grandTotal 
             }),
         });
-
+        //backend will return public url and a base64-encoded PDF.
         const pdfData = await pdfResponse.json();
-
         if (!pdfData.success) {
             alert("Failed to generate invoice PDF.");
             return;
         }
-
         // Open the direct file URL
         window.open(pdfData.pdfUrl, "_blank");
-
         // Step 2: Send Email with PDF Attached
         const emailResponse = await fetch("http://localhost:5000/sendInvoiceEmail", {
             method: "POST",
@@ -226,23 +222,20 @@ const GenerateInvoice = () => {
                 senderEmail: email, 
                 recipientEmail: selectedEmail, 
                 clientName: selectedClient,
-                pdfBase64: pdfData.pdfBase64,  // Now correctly sending Base64 instead of path
+                pdfBase64: pdfData.pdfBase64, 
             }),
         });
-
         const emailResult = await emailResponse.json();
         if (emailResult.success) {
             alert("Invoice sent successfully!");
         } else {
             alert("Failed to send invoice email.");
         }
-
     } catch (error) {
         console.error("Error:", error);
         alert("Something went wrong!");
     }
 };
-
 
       return (
         <div className="min-h-screen flex flex-col justify-between items-center bg-gradient-to-l from-blue-100 to-blue-300 relative">
