@@ -191,177 +191,166 @@ const GenerateInvoice = () => {
 
   const sendInvoiceEmail = async (event) => {
     event.preventDefault();
-    //console.log("Client name: ", selectedClient);
-    //console.log("Client email is : ", selectedEmail);
-    //here we need to make the email id by adding name of the client
-    const name = selectedClient.replace(/\s+/g,"").toLowerCase();
-    const email = name+"@resend.dev"; //sort out later domain stuff
+    
+    const name = selectedClient.replace(/\s+/g, "").toLowerCase();
+    const email = name + "@resend.dev"; // Dummy email, replace later.
+
     try {
-      const response = await fetch('http://localhost:5000/sendInvoiceEmail', {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          //can we just change the invoice to the name of the person and then send
-          senderEmail: email, //Always email are sent from this email, how can we send email using someone else email id (email spoofing) 
-                                                //for this we 
-                                                // used resend API.
-          recipietEmail: selectedEmail,
-          clientName: selectedClient,
-        }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        toast.success("Invoice email sent successfully.");
-        try {
-          const response = await fetch("http://localhost:5000/generateInvoicePDF", {
+        // Step 1: Generate Invoice PDF
+        const pdfResponse = await fetch("http://localhost:5000/generateInvoicePDF", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                lines, name, companyName, bemail, phone, city, selectedClient, selectedEmail, 
+                issueDate, dueDate, invoiceNumber, itemPriceTotal, gstTotal, grandTotal 
+            }),
+        });
+
+        const pdfData = await pdfResponse.json();
+
+        if (!pdfData.success) {
+            alert("Failed to generate invoice PDF.");
+            return;
+        }
+
+        // Open the direct file URL
+        window.open(pdfData.pdfUrl, "_blank");
+
+        // Step 2: Send Email with PDF Attached
+        const emailResponse = await fetch("http://localhost:5000/sendInvoiceEmail", {
             method: "POST",
             headers: {
-              "Content-Type": "application/json",
+                "Content-Type": "application/json",
             },
-            body:JSON.stringify({
-              lines,
-              name, //person who make invoice
-              companyName,
-              bemail,
-              phone, //person who make invoice
-              city, //person who make invoice
-              selectedClient,
-              selectedEmail,
-              issueDate,
-              dueDate,
-              invoiceNumber,
-              itemPriceTotal,
-              gstTotal,
-              grandTotal,
-            })
-          });
-    
-          if (response.ok) {
-            const blob = await response.blob();
-            const pdfUrl = window.URL.createObjectURL(blob);
-            // Open in a new tab instead of forcing a download
-            window.open(pdfUrl, "_blank");
-          } else {
-            console.error("Failed to generate PDF");
-          }
-        } catch (error) {
-          console.error("Error:", error);
+            body: JSON.stringify({
+                senderEmail: email, 
+                recipientEmail: selectedEmail, 
+                clientName: selectedClient,
+                pdfBase64: pdfData.pdfBase64,  // Now correctly sending Base64 instead of path
+            }),
+        });
+
+        const emailResult = await emailResponse.json();
+        if (emailResult.success) {
+            alert("Invoice sent successfully!");
+        } else {
+            alert("Failed to send invoice email.");
         }
-      }
+
     } catch (error) {
-      console.error("Error sending email: ", error);
-      toast.error("Failed to send invoice email.");
+        console.error("Error:", error);
+        alert("Something went wrong!");
     }
-  };
-  
-  
-  return (
-    <div className="min-h-screen flex flex-col justify-between items-center bg-gradient-to-l from-blue-100 to-blue-300 relative">
-      <div className={`w-2/3 flex flex-col`}>
-        <div className='flex justify-between'>
-          <h3 className='text-3xl font-bold text-blue-700 mt-2'>New Invoice</h3>
-          <div className='flex gap-4'>
-            <a href="#" className='mt-4 mr-3 text-red-600 underline' onClick={() => window.history.back()}>Cancel</a>
-            <button className='pt-1 pb-1 pr-4 pl-4 bg-blue-600 text-white mt-2 rounded' onClick={saveInvoiceToDataBase}>Save</button>
-          </div>
-        </div>
-        <form action="" className='mt-4 mb-7 bg-white p-6 rounded shadow-lg'>
-          <div className='flex flex-col bg-zinc-100 p-3 rounded'>
-            <p className='mt-2'><strong>Name:  {name ? `${name}` : "Loading..."}</strong></p>
-            <p className='mt-2'><strong>Company Name:  {companyName ? `${companyName}` : "Loading..."}</strong></p>
-            <p className='mt-2'><strong>Phone: {phone ? `${phone}` : "Loading..."}</strong></p>
-            <p className='mt-2'><strong>Address: {city ? `${city}` : "Loading..."}</strong></p>
-          </div>
-
-          <div className='flex gap-20 mt-6'>
-            <div className='flex flex-col w-1/4'>
-              <div className='font-bold'>Billed to</div>
-              <div className='mt-2'>
-                <select className='p-1 w-40 rounded border-2' onChange={handleClientChnage} value={selectedClient}>
-                  <option value="" >Select a Client</option>
-                  {allClients.map((client, index) => (
-                    <option key={index} value={client.fullname}>{client.fullname}</option>
-                  ))}
-                </select>
-              </div>
-              <button type="button" className='text-blue-400 mt-5 text-base text-start hover:text-blue-600' onClick={() => setIsFormOpen(true)} >
-                + Create New Client
-              </button>
-            </div>
-            <div className='flex flex-col w-1/4'>
-              <div className='text-gray-700'>Date of issue</div>
-              <input className='bg-zinc-200 p-2 rounded mt-2' type="date" value={issueDate} onChange={(e) => setToday(e.target.value)} />
-              <div className='text-gray-700 mt-4'>Due Date</div>
-              <input className='bg-zinc-200 p-2 rounded mt-2' type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-            </div>
-            <div className='flex flex-col w-1/4 items-center'>
-              <div className='text-gray-700 mt-6'>Invoice number</div>
-              <div className='mt-2 bg-zinc-200 p-2 rounded w-32 text-center text-gray-600'>{invoiceNumber}</div>
-            </div>
-            <div className='flex flex-col w-1/4 items-center'>
-              <div className='text-2xl font-bold mt-6'>Total Amount</div>
-              <div className='mt-3 text-2xl text-green-700 font-semibold'>₹ {grandTotal}</div>
-            </div>
-          </div>
-
-          <hr className='mt-5 border-gray-400' />
-          <div className='flex text-zinc-600 mt-2 mb-4 font-semibold'>
-            <div className='w-1/2'>Description</div>
-            <div className='w-1/6'>Rate</div>
-            <div className='w-1/6'>Qty</div>
-            <div className='w-1/6 text-center'>Line Total</div>
-            <div className='w-1/6 text-center'>After GST</div>
-          </div>
-
-          {lines.map((line, index) => (
-            <div key={index} className='flex text-zinc-500 mt-2'>
-              <i className='bi bi-trash text-red-500 cursor-pointer mr-2 mt-2' onClick={() => deleteItem(index)}></i>
-              <input className="bg-zinc-200 p-2 rounded w-2/5" type="text" placeholder="Description"
-                onChange={(e) => {
-                  const value = e.target.value;
-                  handleLineChange(index, "description", value);
-                }}
-                onBlur={(e) => {
-                  fetchGST(e.target.value, index); // Fetch GST
-                }
-                } />
-              <input className='bg-zinc-200 p-2 rounded w-1/6 ml-4' type="number" placeholder="Rate" onChange={(e) => handleLineChange(index, "rate", e.target.value)} />
-              <input className='bg-zinc-200 p-2 rounded w-1/6 ml-4' type="number" placeholder="Qty" onChange={(e) => handleLineChange(index, "qty", e.target.value)} />
-              <input className='bg-zinc-200 p-2 rounded w-1/6 ml-4' type="text" placeholder="Line Total" value={line.rate * line.qty || 0} readOnly />
-              <input placeholder='Adding GST' className='bg-zinc-200 p-2 rounded w-1/6 ml-4' value={(line.rate * line.qty) + ((line.rate * line.qty) * line.gst) / 100 || 0}
-              />
-            </div>
-          ))}
-
-          <div className='mt-3 w-full border-dashed border-2 border-blue-500 rounded p-3 text-center cursor-pointer hover:bg-blue-100' onClick={addLine}>
-            + Add a Line
-          </div>
-
-          <div className='flex flex-col items-end mt-6'>
-            <div className='flex justify-between w-1/4'>
-              <div className='font-semibold'>Subtotal</div>
-              <div>₹ {itemPriceTotal}</div>
-            </div>
-            <div className='flex justify-between w-1/4 mt-2'>
-              <div className='font-semibold'>GST Total</div>
-              <div>₹ {gstTotal}</div>
-            </div>
-            <hr className='w-1/4 my-2 border-gray-400' />
-            <div className='flex justify-between w-1/4'>
-              <div className='font-bold'>Grand Total</div>
-              <div className='font-bold'>₹ {grandTotal}</div>
-            </div>
-          </div>
-          <div className='flex justify-end'>
-            <button className='bg-blue-600 mt-5 w-40 p-3 font-bold text-white rounded hover:bg-blue-700 transition duration-300' onClick={sendInvoiceEmail}>Send to Client</button>
-          </div>
-        </form>
-      </div>
-      <ToastContainer position="top-right" autoClose={3000} />
-      <Footer />
-    {isFormOpen && <NewClientForm onClose={() => setIsFormOpen(false)} companyName={companyName} />}
-    </div>
-  );
 };
 
-export default GenerateInvoice;
+
+      return (
+        <div className="min-h-screen flex flex-col justify-between items-center bg-gradient-to-l from-blue-100 to-blue-300 relative">
+          <div className={`w-2/3 flex flex-col`}>
+            <div className='flex justify-between'>
+              <h3 className='text-3xl font-bold text-blue-700 mt-2'>New Invoice</h3>
+              <div className='flex gap-4'>
+                <a href="#" className='mt-4 mr-3 text-red-600 underline' onClick={() => window.history.back()}>Cancel</a>
+                <button className='pt-1 pb-1 pr-4 pl-4 bg-blue-600 text-white mt-2 rounded' onClick={saveInvoiceToDataBase}>Save</button>
+              </div>
+            </div>
+            <form action="" className='mt-4 mb-7 bg-white p-6 rounded shadow-lg'>
+              <div className='flex flex-col bg-zinc-100 p-3 rounded'>
+                <p className='mt-2'><strong>Name:  {name ? `${name}` : "Loading..."}</strong></p>
+                <p className='mt-2'><strong>Company Name:  {companyName ? `${companyName}` : "Loading..."}</strong></p>
+                <p className='mt-2'><strong>Phone: {phone ? `${phone}` : "Loading..."}</strong></p>
+                <p className='mt-2'><strong>Address: {city ? `${city}` : "Loading..."}</strong></p>
+              </div>
+
+              <div className='flex gap-20 mt-6'>
+                <div className='flex flex-col w-1/4'>
+                  <div className='font-bold'>Billed to</div>
+                  <div className='mt-2'>
+                    <select className='p-1 w-40 rounded border-2' onChange={handleClientChnage} value={selectedClient}>
+                      <option value="" >Select a Client</option>
+                      {allClients.map((client, index) => (
+                        <option key={index} value={client.fullname}>{client.fullname}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button type="button" className='text-blue-400 mt-5 text-base text-start hover:text-blue-600' onClick={() => setIsFormOpen(true)} >
+                    + Create New Client
+                  </button>
+                </div>
+                <div className='flex flex-col w-1/4'>
+                  <div className='text-gray-700'>Date of issue</div>
+                  <input className='bg-zinc-200 p-2 rounded mt-2' type="date" value={issueDate} onChange={(e) => setToday(e.target.value)} />
+                  <div className='text-gray-700 mt-4'>Due Date</div>
+                  <input className='bg-zinc-200 p-2 rounded mt-2' type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                </div>
+                <div className='flex flex-col w-1/4 items-center'>
+                  <div className='text-gray-700 mt-6'>Invoice number</div>
+                  <div className='mt-2 bg-zinc-200 p-2 rounded w-32 text-center text-gray-600'>{invoiceNumber}</div>
+                </div>
+                <div className='flex flex-col w-1/4 items-center'>
+                  <div className='text-2xl font-bold mt-6'>Total Amount</div>
+                  <div className='mt-3 text-2xl text-green-700 font-semibold'>₹ {grandTotal}</div>
+                </div>
+              </div>
+
+              <hr className='mt-5 border-gray-400' />
+              <div className='flex text-zinc-600 mt-2 mb-4 font-semibold'>
+                <div className='w-1/2'>Description</div>
+                <div className='w-1/6'>Rate</div>
+                <div className='w-1/6'>Qty</div>
+                <div className='w-1/6 text-center'>Line Total</div>
+                <div className='w-1/6 text-center'>After GST</div>
+              </div>
+
+              {lines.map((line, index) => (
+                <div key={index} className='flex text-zinc-500 mt-2'>
+                  <i className='bi bi-trash text-red-500 cursor-pointer mr-2 mt-2' onClick={() => deleteItem(index)}></i>
+                  <input className="bg-zinc-200 p-2 rounded w-2/5" type="text" placeholder="Description"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      handleLineChange(index, "description", value);
+                    }}
+                    onBlur={(e) => {
+                      fetchGST(e.target.value, index); // Fetch GST
+                    }
+                    } />
+                  <input className='bg-zinc-200 p-2 rounded w-1/6 ml-4' type="number" placeholder="Rate" onChange={(e) => handleLineChange(index, "rate", e.target.value)} />
+                  <input className='bg-zinc-200 p-2 rounded w-1/6 ml-4' type="number" placeholder="Qty" onChange={(e) => handleLineChange(index, "qty", e.target.value)} />
+                  <input className='bg-zinc-200 p-2 rounded w-1/6 ml-4' type="text" placeholder="Line Total" value={line.rate * line.qty || 0} readOnly />
+                  <input placeholder='Adding GST' className='bg-zinc-200 p-2 rounded w-1/6 ml-4' value={(line.rate * line.qty) + ((line.rate * line.qty) * line.gst) / 100 || 0}
+                  />
+                </div>
+              ))}
+
+              <div className='mt-3 w-full border-dashed border-2 border-blue-500 rounded p-3 text-center cursor-pointer hover:bg-blue-100' onClick={addLine}>
+                + Add a Line
+              </div>
+
+              <div className='flex flex-col items-end mt-6'>
+                <div className='flex justify-between w-1/4'>
+                  <div className='font-semibold'>Subtotal</div>
+                  <div>₹ {itemPriceTotal}</div>
+                </div>
+                <div className='flex justify-between w-1/4 mt-2'>
+                  <div className='font-semibold'>GST Total</div>
+                  <div>₹ {gstTotal}</div>
+                </div>
+                <hr className='w-1/4 my-2 border-gray-400' />
+                <div className='flex justify-between w-1/4'>
+                  <div className='font-bold'>Grand Total</div>
+                  <div className='font-bold'>₹ {grandTotal}</div>
+                </div>
+              </div>
+              <div className='flex justify-end'>
+                <button className='bg-blue-600 mt-5 w-40 p-3 font-bold text-white rounded hover:bg-blue-700 transition duration-300' onClick={sendInvoiceEmail}>Send to Client</button>
+              </div>
+            </form>
+          </div>
+          <ToastContainer position="top-right" autoClose={3000} />
+          <Footer />
+          {isFormOpen && <NewClientForm onClose={() => setIsFormOpen(false)} companyName={companyName} />}
+        </div>
+      );
+    };
+
+    export default GenerateInvoice;

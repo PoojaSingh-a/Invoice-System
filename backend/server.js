@@ -6,6 +6,8 @@ const jwt = require("jsonwebtoken");
 const sendEmail = require("./sendEmail");
 const bodyParser = require("body-parser");
 const puppeteer = require("puppeteer");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
 const SECRET_KEY = "key";
@@ -20,6 +22,8 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+app.use("/invoices", express.static(path.join(__dirname, "invoices"))); // Serve static files (PDFs)
+
 
 const db = mysql.createConnection({
   host: "localhost",
@@ -508,241 +512,70 @@ app.get("/allInvoicesCreated", (req, res) => {
   });
 });
 
-app.post("/sendInvoiceEmail", async (req, res) => {
-  const { senderEmail, recipietEmail, clientName } = req.body;
-  // console.log("Sender email is : ", senderEmail);
-  //console.log("Recipient email is : ", recipietEmail);
-  //console.log("Client name is : ", clientName);
-  try {
-    await sendEmail(senderEmail, recipietEmail, clientName);
-    res.json({ success: true, message: "Invoice email sent successfully" });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to send email" });
-  }
-});
-
 app.post("/generateInvoicePDF", async (req, res) => {
-  console.log("this comess from frontend: ", req.body);
-  try {
-    console.log("PDF generation started.");
-    console.log("Name in form will be: ", req.body.name);
+    try {
+        const browser = await puppeteer.launch();
+        const page = await browser.newPage();
 
-    const browser = await puppeteer.launch(); //starts a headless (invisible) browser.
-    const page = await browser.newPage(); // opens a new tab inside that browser.
+        // HTML Content for Invoice
+        const content = `
+            <html>
+                <body>
+                    <h1>Invoice for ${req.body.selectedClient}</h1>
+                    <p>Invoice Number: ${req.body.invoiceNumber}</p>
+                    <p>Issue Date: ${req.body.issueDate}</p>
+                    <p>Due Date: ${req.body.dueDate}</p>
+                    <p>Total: ${req.body.grandTotal}</p>
+                </body>
+            </html>
+        `;
+        await page.setContent(content);
 
-    let itemsHtml = "";
-    req.body.lines.forEach((item) => {
-      itemsHtml += `
-      <tr>
-        <td>${item.description}</td>
-        <td>${item.rate}</td>
-        <td>${item.qty}</td>
-        <td>${item.rate * item.qty}</td>
-        <td>${item.rate * item.qty + (item.rate * item.qty * item.gst) / 100}</td>
-      </tr>
-      `;
-    });
-    const invoiceHTML = `
-           <!DOCTYPE html>
-           <html lang="en">
-           <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Invoice Form</title>
-            <style>
-                @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
-
-             body {
-              font-family: 'Poppins', sans-serif;
-              background-color: #f8f9fa;
-              margin: 0;
-              padding: 20px;
-            }
-
-            .outer {
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-            background: #fff;
-            padding: 20px;
-            max-width: 800px;
-            margin: auto;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        // Ensure 'invoices' directory exists
+        const invoicesDir = path.join(__dirname, "invoices");
+        if (!fs.existsSync(invoicesDir)) {
+            fs.mkdirSync(invoicesDir);
         }
 
-        .headingDiv {
-            text-align: center;
-            width: 100%;
-            padding-bottom: 10px;
-        }
+        const fileName = `invoice_${Date.now()}.pdf`;
+        const filePath = path.join(invoicesDir, fileName);
 
-        .heading {
-            font-size: 26px;
-            font-weight: 600;
-            color: #333;
-        }
+        await page.pdf({ path: filePath, format: "A4" });
 
-        hr {
-            width: 100%;
-            border: none;
-            height: 2px;
-            background: #ddd;
-            margin: 10px 0;
-        }
+        await browser.close();
 
-        .content {
-            width: 100%;
-            padding: 20px;
-        }
+        // Convert PDF to Base64 for email
+        const pdfBase64 = fs.readFileSync(filePath).toString("base64");
 
-        .section {
-            background-color: #f1f1f1;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
+        res.json({
+            success: true,
+            pdfUrl: `http://localhost:5000/invoices/${fileName}`,  // Public URL for download
+            pdfBase64: pdfBase64  // Send Base64 string for email attachment
+        });
 
-        .invoiceDetails2 {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .invoiceDetails2 div {
-            flex: 1;
-            min-width: 150px;
-        }
-
-        p {
-            margin: 5px 0;
-        }
-
-        input[type="date"] {
-            border: 1px solid #ccc;
-            padding: 6px;
-            width: 100%;
-            border-radius: 4px;
-            background: white;
-            font-size: 14px;
-        }
-
-        .table-container {
-            margin-top: 20px;
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-        }
-
-        th, td {
-            padding: 10px;
-            text-align: left;
-            border: 1px solid #ddd;
-        }
-
-        th {
-            background: #007bff;
-            color: white;
-        }
-
-        .totalAmount {
-            text-align: right;
-            margin-top: 20px;
-            font-size: 16px;
-            font-weight: 600;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="outer">
-        <div class="headingDiv">
-            <h3 class="heading">Invoice Form</h3>
-        </div>
-        <hr />
-
-        <div class="content">
-            <!-- Sender Details -->
-            <div class="section">
-                <p><b>Name:</b> ${req.body.name}</p>
-                <p><b>Company:</b> ${req.body.companyName}</p>
-                <p><b>Phone:</b> ${req.body.phone}</p>
-                <p><b>Address:</b> ${req.body.city}</p>
-            </div>
-
-            <!-- Invoice Details -->
-            <div class="section">
-                <div>
-                    <p><b>Billed to:</b> ${req.body.selectedClient}</p>
-                    <p>${req.body.selectedEmail}</p>
-                </div>
-                <div class="invoiceDetails2">
-                    <div>
-                        <p><b>Issue Date:</b></p>
-                        <input type="date" value=${req.body.issueDate} />
-                    </div>
-                    <div>
-                        <p><b>Due Date:</b></p>
-                        <input type="date" value=${req.body.dueDate}/>
-                    </div>
-                    <div>
-                        <p><b>Invoice Number:</b> ${req.body.invoiceNumber}</p>
-                    </div>
-                    <div>
-                        <p><b>Total Amount:</b> ₹${req.body.grandTotal}</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Item Details -->
-            <div class="table-container">
-                <p style="font-weight: bold;">Item List</p>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Description</th>
-                            <th>Rate (₹)</th>
-                            <th>Qty</th>
-                            <th>Line Total (₹)</th>
-                            <th>After GST (₹)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${itemsHtml}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Total Amount -->
-            <div class="totalAmount">
-                <p><b>GST Total:</b> ₹${req.body.gstTotal}</p>
-                <p><b>Grand Total:</b> ₹${req.body.grandTotal}</p>
-            </div>
-        </div>
-    </div>
-
-</body>
-</html>`;
-    //#each is a Handlebars.js helper used for iterating
-    await page.setContent(invoiceHTML); //This renders the invoice HTML inside Puppeteer’s virtual browser.
-    const pdfBuffer = await page.pdf({ format: "A4" }); //converts the page into a PDF in A4 size.
-    await browser.close(); //closes the Puppeteer browser to free up resources.
-
-    // Set headers correctly before sending the buffer
-    res.setHeader("Content-Type", "application/pdf"); //Tells the browser it's a PDF file.
-    res.setHeader("Content-Disposition", "inline; filename=form.pdf"); //Opens the PDF inside the browser instead of downloading it.
-
-    // Send the PDF buffer correctly
-    res.send(Buffer.from(pdfBuffer)); //sends the PDF data as a response.
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-    res.status(500).json({ error: "Failed to generate PDF" });
-  }
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        res.status(500).json({ success: false, message: "Failed to generate PDF" });
+    }
 });
+
+app.post("/sendInvoiceEmail", async (req, res) => {
+    console.log("Email sending request received!");
+    const { senderEmail, recipientEmail, clientName, pdfBase64 } = req.body;
+
+    try {
+        await sendEmail(senderEmail, recipientEmail, clientName, pdfBase64);
+        res.json({ success: true, message: "Invoice email sent successfully" });
+    } catch (error) {
+        console.error("Error sending email:", error);
+        res.status(500).json({ success: false, message: "Failed to send email" });
+    }
+});
+
+
+
+
+
 
 app.listen(5000, () => {
   console.log("Server running on http://localhost:5000");
