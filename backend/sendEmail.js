@@ -1,5 +1,5 @@
 const { Resend } = require('resend');
-const resend = new Resend('re_TANhsRc5_F3Y6hyxyxMGTHRvieuqnEMHz'); // Replace with actual API key
+const resend = new Resend('re_TANhsRc5_F3Y6hyxyxMGTHRvieuqnEMHz'); 
 
 async function sendEmail(senderEmail, recipientEmail, clientName, pdfBase64,calendarLink) {
     try {
@@ -18,7 +18,7 @@ async function sendEmail(senderEmail, recipientEmail, clientName, pdfBase64,cale
                     <p>
                         <a href="${calendarLink}" target="_blank"
                         style="display: inline-block; padding:12px 24px; margin-top:10px; background-color:#007bff; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                        Add Reminder to Google Calendar
+                        Add Payment Reminder
                         </a>
                     </p>
                     <p>Thankyou!</p>
