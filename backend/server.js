@@ -8,6 +8,7 @@ const bodyParser = require("body-parser");
 const puppeteer = require("puppeteer");
 const path = require("path");
 const fs = require("fs");
+const {google} = require('googleapis');
 
 const app = express();
 const SECRET_KEY = "key";
@@ -514,10 +515,10 @@ app.get("/allInvoicesCreated", (req, res) => {
 });
 
 app.post("/generateInvoicePDF", async (req, res) => {
+  //console.log("Date coming in backend is : ",req.body.dueDate);
   try {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
-
     // Generate HTML for the invoice
     let itemsHtml = "";
     req.body.lines.forEach((item) => {
@@ -679,7 +680,7 @@ app.post("/generateInvoicePDF", async (req, res) => {
                       </div>
                       <div>
                           <p><b>Due Date:</b></p>
-                          <input type="date" value=${req.body.dueDate}/>
+                          <input type="date" value=${req.body.dueDate} />
                       </div>
                       <div>
                           <p><b>Invoice Number:</b> ${req.body.invoiceNumber}</p>
@@ -720,12 +721,9 @@ app.post("/generateInvoicePDF", async (req, res) => {
   </html>`;
 
     await page.setContent(content);
-
     // Generate PDF Buffer
     const pdfBuffer = await page.pdf({ format: "A4" });
-
     await browser.close();
-
     // Send the PDF Buffer as a response
     res.set({
       "Content-Type": "application/pdf",
@@ -733,18 +731,59 @@ app.post("/generateInvoicePDF", async (req, res) => {
       "Content-Length": pdfBuffer.length,
     });
     res.end(pdfBuffer);
-  } catch (error) {
+
+    //After sending PDF,creatr calendar event for reminder
+    await createPaymentReminder(req.body.selectedClient,req.body.dueDate,req.body.grandTotal);
+  } 
+  catch (error) {
     console.error("Error generating PDF:", error);
     res.status(500).json({ success: false, message: "Failed to generate PDF" });
   }
+
 });
 
+async function createPaymentReminder(clientName,dueDate,amount) {
+  const auth = new google.auth.GoogleAuth({
+    keyFile: path.join(__dirname,'keys/service-account-key.json'),
+    scopes: ['https://www.googleapis.com/auth/calendar'],
+  });
+
+  const authClient = await auth.getClient();
+  const calendar = google.calendar({version:'v3',auth:authClient});
+  const calendarId = 'primary';
+  const event = {
+    summary:`Payment Reminder: ${clientName}`,
+    description:`Payment of ₹{amount} is due.`,
+    start:{
+      dateTime: new Date(dueDate).toISOString(),
+      timezone: 'Asia/kolkata',
+    },
+    end:{
+      dateTime:new Date(dueDate).toISOString(),
+      timezone:'Asia/kolkata',
+    },
+    reminders:{
+      useDefault: false,
+      overrides:[
+        {method: 'email',minutes:24*60},
+        {method: 'popup',minutes: 10},
+      ],
+    },
+  };
+
+  const response = await calendar.events.insert({
+    calendarId:'primary',
+    resource: event,
+  });
+  //console.log('Event created: %s',response.data.htmlLink);
+}
+
 app.post("/sendInvoiceEmail", async (req, res) => {
-  console.log("Email sending request received!");
-  const { senderEmail, recipientEmail, clientName, pdfBase64 } = req.body;
+ // console.log("Email sending request received!");
+  const { senderEmail, recipientEmail, clientName, pdfBase64, calendarLink } = req.body;
 
   try {
-    await sendEmail(senderEmail, recipientEmail, clientName, pdfBase64);
+    await sendEmail(senderEmail, recipientEmail, clientName, pdfBase64, calendarLink);
     res.json({ success: true, message: "Invoice email sent successfully" });
   } catch (error) {
     console.error("Error sending email:", error);
