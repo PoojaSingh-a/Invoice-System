@@ -11,7 +11,7 @@ const ProtectedRoute = () => {
                     method: "GET",
                     credentials: "include", // IMPORTANT to send cookies
                 });
-
+                //From backend userType is also coming here we can later use it to check which logged in user can access which route
                 const data = await response.json();
                 if (data.authenticated) {
                     setIsAuthenticated(true);
@@ -38,7 +38,7 @@ const ProtectedRoute = () => {
             </div>
           );
     } 
-    return isAuthenticated ? <Outlet /> : <Navigate to="/login" state={{message:"You must Log in first!"}}/>;
+    return isAuthenticated ? (<Outlet /> ): (<Navigate to="/"/>);
 };
 
 export default ProtectedRoute;

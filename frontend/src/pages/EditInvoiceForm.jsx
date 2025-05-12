@@ -3,6 +3,7 @@ import Footer from '../components/Footer';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useLocation } from 'react-router-dom';
 
 const EditInvoiceForm = () => {
   const [lines, setLines] = useState([]);
@@ -21,7 +22,11 @@ const EditInvoiceForm = () => {
   const [issueDate, setIssueDate] = useState(null);
   const [dueDate, setdueDate] = useState(null);
   const [selectedInvoiceNumber, setSelectedInvoiceNumber] = useState('');
-
+  const [selectedClient, setSelectedClient] = useState();
+  const [selectedEmail, setSelectedEmail] = useState();
+  //In case Edit is chosen from AllInvoice page then we need to get the invoice number from there
+  const location = useLocation();
+  const invoiceFormState = location.state?.invoiceNumber;
   //When need to add more items
   const addLine = () => {
     setItems([...items, { invoiceNumber: selectedInvoiceNumber, itemDesc: '', itemRate: 0, itemQty: 0, itemGST: 0 }]);
@@ -29,7 +34,7 @@ const EditInvoiceForm = () => {
 
   //runs after every render
   useEffect(() => {
-    //will run only at initial render[] will not run after that
+    // will run only at initial render [] will not run after that
     const fetchInvoicesNumber = async () => {
       try {
         const response = await fetch("http://localhost:5000/getInvoiceNumbers", {
@@ -37,18 +42,17 @@ const EditInvoiceForm = () => {
           credentials: "include",
         });
         const data = await response.json();
-        // console.log("these invoices comes from backend", data);
+        // console.log("these invoices come from backend", data);
         if (response.ok) {
           setInvoiceNumbers(data.invoices);
-        }
-        else {
+        } else {
           console.log("Error: ", data.error);
         }
+      } catch (error) {
+        console.error("Error fetching invoice data: ", error);
       }
-      catch (error) {
-        console.error("Error fetching user data: ", error);
-      }
-    }
+    };
+
     const fetchUserData = async () => {
       try {
         const response = await fetch("http://localhost:5000/generateInvoice", {
@@ -56,31 +60,39 @@ const EditInvoiceForm = () => {
           credentials: "include",
         });
         const data = await response.json();
-        //console.log("this comes from backend", data)
+        //console.log("this comes from backend", data);
         if (response.ok) {
           setName(data.name);
           setCompanyName(data.companyName);
           setBemail(data.email);
           setPhone(data.phone);
           setCity(data.city);
-        }
-        else {
+        } else {
           console.log("Error: ", data.error);
         }
-      }
-      catch (error) {
+      } catch (error) {
         console.error("Error fetching user data: ", error);
       }
-    }
-    fetchInvoicesNumber();
-    fetchUserData();
+    };
+
+    const fetchData = async () => {
+      await fetchInvoicesNumber();
+      await fetchUserData();
+      if (invoiceFormState) {
+        setSelectedInvoiceNumber(invoiceFormState);
+        await handleInvoiceChange({target:{value: invoiceFormState}});
+      }
+    };
+
+    
+    fetchData(); // Call fetchData after defining it
   }, []);
 
   //When we select a invoice from the dropdown then this 
   //fetch all corrsponding details related to that invoice number
   const handleInvoiceChange = async (e) => {
     const invoiceNumber = e.target.value;
-    setSelectedInvoiceNumber(invoiceNumber); // Asynchronous update
+    setSelectedInvoiceNumber(invoiceNumber);
     if (!invoiceNumber) {
       console.error("Invoice number is required");
       return;
@@ -92,7 +104,7 @@ const EditInvoiceForm = () => {
       });
 
       const data = await response.json();
-      console.log("Fetched Data: ", data);
+      console.log("Fetched Data: ", data); // Log the entire response
 
       if (response.ok) {
         setClientName(data.invoice.clientName);
@@ -100,17 +112,21 @@ const EditInvoiceForm = () => {
         setIssueDate(data.invoice.issueDate ? new Date(data.invoice.issueDate).toLocaleDateString('en-CA') : "");
         setdueDate(data.invoice.dueDate ? new Date(data.invoice.dueDate).toLocaleDateString('en-CA') : "");
 
-        setItems(data.items || []); //all items in here 
+        // Set selectedClient and selectedEmail here
+        setSelectedClient(data.invoice.clientName);
+        setSelectedEmail(data.invoice.clientEmail);
+
+        console.log("Updated Selected Client:", data.invoice.clientName);
+        console.log("Updated Selected Email:", data.invoice.clientEmail);
+
+        setItems(data.items || []);
       } else {
         console.log("Error: ", data.error);
       }
     } catch (error) {
       console.error("Error fetching invoice data: ", error);
     }
-    console.log("Issue date : ", issueDate);
-    console.log("due date : ", dueDate);
   };
-
   //Calculate total for every line and all
   const calculateTotals = () => {
     let subTotal = 0;
@@ -123,14 +139,12 @@ const EditInvoiceForm = () => {
     const grandTotal = subTotal + gstTotal;
     return { subTotal, gstTotal, grandTotal };
   };
-
   //Every time items array or lines changes we calculate totals again
   useEffect(() => {
     calculateTotals();
   }, [items, lines]);  // Recalculate totals when items or lines change
 
   const { subTotal, gstTotal, grandTotal } = calculateTotals();
-
   const handleLineChange = (index, field, value) => {
     setLines(prevLines =>
       prevLines.map((line, i) =>
@@ -138,7 +152,6 @@ const EditInvoiceForm = () => {
       )
     )
   }
-
   const handleItemChange = (index, field, value) => {
     const updatedItems = [...items];
     updatedItems[index][field] = value;
@@ -146,11 +159,9 @@ const EditInvoiceForm = () => {
     updatedItems[index].gstTotal = updatedItems[index].lineTotal * (updatedItems[index].itemGST / 100);
     setItems(updatedItems);
   };
-
   const deleteItem = (index) => {
     setItems(prevItems => prevItems.filter((_, i) => i !== index));
   };
-
   /**Fetch GST from db*/
   const fetchGST = async (description, index, isItem) => {
     if (!description)
@@ -184,8 +195,9 @@ const EditInvoiceForm = () => {
     }
   };
 
-  const saveInvoiceChangesToDataBase = async () => {
-    console.log("This is in items: ", items);
+  /*It should be update to database */
+  const saveInvoiceChangesToDataBase = async (statusValue) => {
+    let status;
     const invoiceData = {
       issueDate,
       dueDate,
@@ -194,8 +206,9 @@ const EditInvoiceForm = () => {
       subTotal,
       gstTotal,
       grandTotal,
+      status: statusValue,
     };
-    //console.log("This data is going to be saveddddd",invoiceData);
+    console.log("This data is going to be saveddddd", invoiceData);
     try {
       const response = await fetch('http://localhost:5000/saveInvoiceChangesToDataBase', {
         method: "POST",
@@ -221,6 +234,108 @@ const EditInvoiceForm = () => {
     }
   };
 
+  function formatDateForICS(date) {
+    const d = new Date(date + 'T00:00:00Z');
+    return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  }
+
+  //send email to client
+  const sendInvoiceEmail = async (event) => {
+    console.log("Item being copied are : ", items.Qty, items.itemRate, items.itemDesc, items.itemGST);
+    const linesToSend = items.map(item => ({
+      description: item.itemDesc,
+      quantity: item.itemQty,
+      rate: item.itemRate,
+      gst: item.itemGST,
+    }));
+
+    event.preventDefault();
+    // Check if selectedClient is defined
+    if (!selectedClient) {
+      alert("Client name is not selected.");
+      return;
+    }
+    const name = selectedClient.replace(/\s+/g, "").toLowerCase();
+    const email = name + "@resend.dev"; // Dummy email, replace later.
+    console.log("Data to form is : ", items, selectedInvoiceNumber);
+    try {
+      // Step 1: Generate Invoice PDF
+      const pdfResponse = await fetch("http://localhost:5000/generateInvoicePDF", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lines: linesToSend, name, companyName, bemail, phone, city, selectedClient, selectedEmail,
+          issueDate, dueDate, selectedInvoiceNumber, subTotal, gstTotal, grandTotal,
+        }),
+      });
+
+      if (!pdfResponse.ok) {
+        throw new Error("Failed to generate invoice PDF.");
+      }
+
+      // Convert response into a Blob
+      const pdfBlob = await pdfResponse.blob();
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfUrl, "_blank");
+
+      // Prepare Base64 of PDF
+      const pdfBase64 = await blobToBase64(pdfBlob);
+      // Create Google Calendar link
+      const eventTitle = encodeURIComponent("Invoice due reminder");
+      const eventDescription = encodeURIComponent("Reminder to pay invoice before due date");
+      const startDateTime = formatDateForICS(issueDate);
+      const endDateTime = formatDateForICS(dueDate);
+      const googleCalendarLink = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&&dates=${startDateTime}/${endDateTime}&details=${eventDescription}`;
+      console.log("Sender email is : ", email);
+      console.log("Recipient email is : ", selectedEmail);
+      /* const emailResponse = await fetch("http://localhost:5000/sendInvoiceEmail", {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({
+           senderEmail: email,
+           recipientEmail: selectedEmail,
+           clientName: selectedClient,
+           pdfBase64: pdfBase64,
+           calendarLink: googleCalendarLink,
+         }),
+       });
+   
+       const emailResult = await emailResponse.json();
+       if (emailResult.success) {
+         alert("Invoice sent successfully!");
+       } else {
+         alert("Failed to send invoice email.");
+       }*/
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Something went wrong!");
+    }
+  };
+  // Helper function to convert Blob to Base64
+  const blobToBase64 = (blob) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result.split(',')[1];
+        resolve(base64data);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+  //to call both save and email fx. simultaneously
+  const handleUpdateToClient = async (e) => {
+    e.preventDefault();
+    //console.log("Selected Client:", selectedClient);
+    //console.log("Selected Email:", selectedEmail);
+    console.log("Lines are : ", lines);
+    console.log("Items are : ", items);
+    await saveInvoiceChangesToDataBase("sent");
+    console.log("After Lines are : ", lines);
+    console.log("Items are : ", items);
+    await sendInvoiceEmail(e);
+  };
+
   return (
     <div className="min-h-screen flex flex-col justify-between items-center bg-gradient-to-l from-blue-100 to-blue-300 relative">
       <div className="w-2/3 flex flex-col">
@@ -228,17 +343,26 @@ const EditInvoiceForm = () => {
           <h3 className='text-3xl font-bold text-blue-700 mt-2'>Edit Invoice</h3>
           <div className='flex gap-4'>
             <a href="#" className='mt-4 mr-3 text-red-600 underline' onClick={() => window.history.back()}>Cancel</a>
-            <button className='pt-1 pb-1 pr-4 pl-4 bg-blue-600 text-white mt-2 rounded' onClick={saveInvoiceChangesToDataBase}>Save</button>
+            <button className='pt-1 pb-1 pr-4 pl-4 bg-blue-600 text-white mt-2 rounded' onClick={() => { saveInvoiceChangesToDataBase("saved") }}>Save</button>
           </div>
         </div>
         <div className='flex mt-5 bg-white p-2 rounded items-center'>
           <label htmlFor="" className='text-xl text-green-600 ml-2'>Invoice Number</label>
-          <select name="" id="" className='ml-16 p-1 pl-2 pr-2 w-50 border-2 rounded' onChange={handleInvoiceChange}>
+          <select
+            name=""
+            id=""
+            className="ml-16 p-1 pl-2 pr-2 w-50 border-2 rounded"
+            onChange={handleInvoiceChange}
+            value={invoiceFormState || ""}
+          >
             <option value="">Select an Invoice</option>
             {invoiceNumbers.map((invoice, index) => (
-              <option key={index} value={invoice.invoiceNumber}>{invoice.invoiceNumber}</option>
+              <option key={index} value={invoice.invoiceNumber}>
+                {invoice.invoiceNumber}
+              </option>
             ))}
           </select>
+
 
         </div>
         <form action="" className='mt-4 mb-7 bg-white p-6 rounded shadow-lg'>
@@ -347,7 +471,7 @@ const EditInvoiceForm = () => {
             </div>
           </div>
           <div className='flex justify-end'>
-            <button className='bg-blue-600 mt-5 w-40 p-3 font-bold text-white rounded hover:bg-blue-700 transition duration-300'>Update to Client</button>
+            <button className='bg-blue-600 mt-5 w-40 p-3 font-bold text-white rounded hover:bg-blue-700 transition duration-300' onClick={handleUpdateToClient}>Update to Client</button>
           </div>
         </form>
       </div>

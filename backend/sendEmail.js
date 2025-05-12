@@ -32,7 +32,7 @@ async function sendEmail(senderEmail, recipientEmail, clientName, pdfBase64,cale
                 },                
             ],
         });
-       // console.log("Email sent successfully.", response);
+        console.log("Email sent successfully.", response);
     } catch (error) {
         console.error("Error sending email:", error);
         throw error;

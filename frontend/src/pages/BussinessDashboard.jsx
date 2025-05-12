@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import Footer from '../components/Footer';
 import Navbar from '../components/Navbar';
-import axios from 'axios';
 import { ToastContainer, toast } from "react-toastify";
 import { useNavigate } from 'react-router-dom';
 import "react-toastify/dist/ReactToastify.css";
-import { FaFileInvoice, FaPlusCircle, FaEdit} from 'react-icons/fa'; // Icons
+import { FaPlusCircle, FaEdit} from 'react-icons/fa'; // Icons
 import { MdTrackChanges } from 'react-icons/md';
-import { AiFillEdit } from 'react-icons/ai';
+import {FaRegFolderOpen} from 'react-icons/fa';
+import {BsCardList} from 'react-icons/bs';
 
 const BussinessDashboard = () => {
   const [name, setName] = useState(null);
@@ -53,7 +53,6 @@ const BussinessDashboard = () => {
         console.error("Error fetching user data:", error);
       }
     };
-
     fetchUserData();
   }, []);
 
@@ -63,13 +62,20 @@ const BussinessDashboard = () => {
     }
   }, [name]);
 
-
   const GenerateInvoiceForm = () => {
     navigate("/generateInvoice");
   };
 
-  const EditInvoiceForm = async () => {
+  const EditInvoicePage = async () => {
     navigate("/editInvoiceForm");
+  }
+
+  const TrackInvoicePage = async() => {
+    navigate("/trackInvoiceForm");
+  }
+
+  const SavedInvoicesPage = async() => {
+    navigate("/savedInvoiceForm");
   }
 
   const invoiceReadMore = async () => {
@@ -77,31 +83,39 @@ const BussinessDashboard = () => {
   }
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col bg-gradient-to-l from-blue-100 to-blue-300">
+    <div className="min-h-screen flex flex-col bg-gradient-to-tr from-indigo-400 via-teal-100 to-blue-300">
       <div className="flex flex-1">
         <Navbar />
-        <div className="right w-4/5 h-auto flex flex-col">
-          <h2 className="text-black font-bold text-3xl mt-12 ml-5">
-            {name ? `Welcome, ${name}` : "Loading..."}
+        <div className="right w-4/5 p-10 ">
+        <div className='bg-white/80 p-6 rounded-3xl shadow-xl mb-10'>
+          <h2 className="text-3xl text-blue-700 font-semibold font-serif ">
+            {name ? `Welcome, ${name}` : "Loading..."} 👋
           </h2>
-
-          <div className="flex gap-20 mt-10">
-            <div className="flex flex-col">
-              <button className="glow-button mt-20 w-80 bg-white hover:bg-blue-600 hover:text-white hover:shadow-glow transition duration-300 text-black p-3 text-xl rounded-lg ml-10 flex items-center gap-5" onClick={GenerateInvoiceForm}>
-                <FaPlusCircle size={22}/>
+          <p className='mt-2 text-gray-600 text-lg'>Welcome back to your dashboard. Manage your invoices efficiently.</p>
+          </div>
+          <div className="flex flex-col lg:flex-row gap-10">
+            <div className="flex flex-col gap-6 w-full lg:w-1/2">
+              <button className="group flex items-center justify-between gap-4 bg-white rounded-xl p-4 border text-lg border-blue-600 hover:bg-blue-600 hover:text-white transition duration-300 shadow-md" onClick={GenerateInvoiceForm}>
+                <FaPlusCircle className='text-blue-600 group-hover:text-white ' size={22}/>
                 <h2>Create a New Invoice</h2>
               </button>
-              <button className="glow-button mt-10 w-80 bg-white hover:bg-blue-600 hover:text-white hover:shadow-glow transition duration-300 text-black p-3 text-xl rounded-lg ml-10 flex items-center gap-5" onClick={EditInvoiceForm}>
-               <FaEdit size={20}/>
+              <button className="group flex items-center justify-between gap-4 bg-white rounded-xl p-4 border text-lg border-blue-600 hover:bg-blue-600 hover:text-white transition duration-300 shadow-md" onClick={EditInvoicePage}>
+               <FaEdit className='text-blue-600 group-hover:text-white' size={20}/>
                 <h2> Edit Invoice</h2>
               </button>
-              <button className="glow-button mt-10 w-80 bg-white hover:bg-blue-600 hover:text-white hover:shadow-glow transition duration-300 text-black p-3 text-xl rounded-lg ml-10 flex items-center gap-5">
-              <MdTrackChanges size={24}/>
-               <h2>Track Invoice</h2>
+              <button className="group flex items-center justify-between gap-4 bg-white rounded-xl p-4 border text-lg border-blue-600 hover:bg-blue-600 hover:text-white transition duration-300 shadow-md" onClick={SavedInvoicesPage}>
+              <FaRegFolderOpen  className='text-blue-600 group-hover:text-white' size={24}/>
+               <h2>Saved Invoices</h2>
               </button>
+              <button className="group flex items-center justify-between gap-4 bg-white rounded-xl p-4 border text-lg border-blue-600 hover:bg-blue-600 hover:text-white transition duration-300 shadow-md" onClick={TrackInvoicePage}>
+              <MdTrackChanges className='text-blue-600 group-hover:text-white' size={24}/>
+               <h2>Track Invoice</h2>
+              </button>              
             </div>
-            <div className="bg-white mt-20 rounded-lg p-6 w-1/2 max-w-[600px] shadow-lg hover:shadow-xl transition duration-300">
-              <h6 className='text-lg font-bold text-gray-800 mb-4 border-b pb-2'>Recently Created Invoice</h6>
+            <div className="bg-white rounded-3xl border border-purple-200 p-6 w-full lg:w-1/2 shadow-lg">
+              <h6 className='text-lg font-bold text-blue-700 mb-4 border-b pb-2 flex items-center gap-2'>
+                <BsCardList className="text-blue-700 text-xl" size={22} />
+                Recently Created Invoice</h6>
               {recentInvoice ? (
                 <>
                   <div className='flex justify-between'>
@@ -114,7 +128,6 @@ const BussinessDashboard = () => {
                       {new Date(recentInvoice.dueDate).toISOString().split('T')[0]}
                     </span>
                   </p>
-
                   <p className='mt-6 text-lg text-blue-600 cursor-pointer hover:text-green-600 transition' onClick={invoiceReadMore}>Read more →</p>
                 </>
               ) : (

@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2");
+const bcrypt = require("bcrypt");
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
 const sendEmail = require("./sendEmail");
@@ -8,7 +9,7 @@ const bodyParser = require("body-parser");
 const puppeteer = require("puppeteer");
 const path = require("path");
 const fs = require("fs");
-const {google} = require('googleapis');
+const { google } = require("googleapis");
 
 const app = express();
 const SECRET_KEY = "key";
@@ -46,34 +47,212 @@ app.get("/", (req, res) => {
 let token;
 let email; //logged in user's email
 
-app.post("/login", (req, res) => {
-  const { email, password } = req.body;
-  const query =
-    "SELECT * FROM bussinessuser_table WHERE email = ? AND password = ?";
+app.post("/clientRegisteration", async (req, res) => {
+  const { fullname, email, password, city } = req.body;
 
-  db.query(query, [email, password], (err, result) => {
-    if (err) res.status(500).json({ error: "Database error" });
-    else if (result.length > 0) {
-      const user = result[0];
-      /**Cookie generation */
-      const token = jwt.sign(
-        { email: user.email, usertype: user.userType },
-        SECRET_KEY,
-        { expiresIn: "1h" }
+  const checkEmailQuery = "SELECT * FROM clientuser_table WHERE email = ?";
+  db.query(checkEmailQuery, [email], async (err, result) => {
+    if (err) {
+      console.error("Error checking email:", err);
+      return res
+        .status(500)
+        .json({ message: "Server error while checking email" });
+    }
+
+    if (result.length > 0) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    try {
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const insertQuery = `INSERT INTO clientuser_table (fullname, email, password, city) VALUES (?, ?, ?, ?)`;
+
+      db.query(
+        insertQuery,
+        [fullname, email, hashedPassword, city],
+        (err, result) => {
+          if (err) {
+            console.error("Error inserting data:", err);
+            return res.status(500).json({ message: "Error inserting data" });
+          }
+          return res.status(200).json({ message: "Registration successful" });
+        }
       );
-      res.cookie("authToken", token, {
-        httpOnly: true,
-        secure: false,
-        sameSite: "strict",
-        maxAge: 3600000,
-      });
+    } catch (err) {
+      console.error("Password hashing failed:", err);
+      return res.status(500).json({ message: "Error processing registration" });
+    }
+  });
+});
 
-      res.json({
-        msg: "Login successful",
-        email: user.email,
-        usertype: user.userType,
-      });
-    } else res.status(401).json({ err: "Invalid credentials" });
+app.post("/businessRegisteration", async (req, res) => {
+  const {
+    fullname,
+    email,
+    password,
+    city,
+    phone,
+    companyName,
+    companyWork,
+    revenue,
+    currentMethod,
+  } = req.body;
+
+  const checkEmailQuery = "SELECT * FROM bussinessuser_table WHERE email = ?";
+  db.query(checkEmailQuery, [email], async (err, result) => {
+    if (err) {
+      console.error("Error checking email:", err);
+      return res
+        .status(500)
+        .json({ message: "Server error while checking email" });
+    }
+
+    if (result.length > 0) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    try {
+      console.log("Password is : ", password); // Debugging
+      const hashedPassword = await bcrypt.hash(password, 10);
+      console.log("Hashed password is : ", hashedPassword); // Debugging
+
+      const insertQuery = `
+        INSERT INTO bussinessuser_table
+        (fullname, email, password, city, phone, companyName, companyDo, estRevenue, currMethod, userType)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      db.query(
+        insertQuery,
+        [
+          fullname,
+          email,
+          hashedPassword,
+          city,
+          phone,
+          companyName,
+          companyWork,
+          revenue,
+          currentMethod,
+          "business",
+        ],
+        (err, result) => {
+          if (err) {
+            console.error("Error inserting data:", err);
+            return res.status(500).json({ message: "Error inserting data" });
+          }
+          return res.status(200).json({ message: "Registration successful" });
+        }
+      );
+    } catch (err) {
+      console.error("Password hashing failed:", err);
+      return res.status(500).json({ message: "Error processing registration" });
+    }
+  });
+});
+
+app.post("/businessLogin", async (req, res) => {
+  const { email, password } = req.body;
+  const query = "SELECT * FROM bussinessuser_table WHERE email = ?";
+
+  db.query(query, [email], async (err, result) => {
+    if (err) return res.status(500).json({ error: "Database error" });
+
+    if (result.length > 0) {
+      const user = result[0];
+      try {
+        const passwordToCheck = password.trim(); // Trim the password to remove any extra spaces
+        console.log("Password is : ", passwordToCheck); // Debugging
+        console.log("From db password is : ", user.password); // Debugging
+        const isPasswordValid = await bcrypt.compare(
+          passwordToCheck,
+          user.password
+        ); // Await
+        console.log("Is password valid:", isPasswordValid); // Debugging
+
+        if (!isPasswordValid) {
+          return res.status(401).json({ err: "Invalid credentials" });
+        }
+
+        //Token generation
+        const token = jwt.sign(
+          { email: user.email, usertype: user.userType },
+          SECRET_KEY,
+          { expiresIn: "1h" }
+        );
+
+        res.cookie("authToken", token, {
+          httpOnly: true,
+          secure: false,
+          sameSite: "strict",
+          maxAge: 3600000,
+        });
+
+        return res.json({
+          msg: "Login successful",
+          email: user.email,
+          usertype: user.userType,
+        });
+      } catch (error) {
+        console.error("Error during password comparison:", error);
+        return res.status(500).json({ error: "Server error" });
+      }
+    } else {
+      return res.status(401).json({ err: "Invalid credentials" });
+    }
+  });
+});
+
+app.post("/clientLogin", async (req, res) => {
+  const { email, password } = req.body;
+  const query = "SELECT * FROM clientuser_table WHERE email = ?";
+
+  db.query(query, [email], async (err, result) => {
+    if (err) return res.status(500).json({ error: "Database error" });
+
+    if (result.length > 0) {
+      const user = result[0];
+      try {
+        const passwordToCheck = password.trim(); // Trim the password to remove any extra spaces
+        console.log("Password is : ", passwordToCheck); // Debugging
+        console.log("From db password is : ", user.password); // Debugging
+        const isPasswordValid = await bcrypt.compare(
+          passwordToCheck,
+          user.password
+        ); // Await
+        console.log("Is password valid:", isPasswordValid); // Debugging
+
+        if (!isPasswordValid) {
+          return res.status(401).json({ err: "Invalid credentials" });
+        }
+
+        //Token generation
+        const token = jwt.sign(
+          { email: user.email, usertype: user.userType },
+          SECRET_KEY,
+          { expiresIn: "1h" }
+        );
+
+        res.cookie("authToken", token, {
+          httpOnly: true,
+          secure: false,
+          sameSite: "strict",
+          maxAge: 3600000,
+        });
+
+        return res.json({
+          msg: "Login successful",
+          email: user.email,
+          usertype: user.userType,
+        });
+      } catch (error) {
+        console.error("Error during password comparison:", error);
+        return res.status(500).json({ error: "Server error" });
+      }
+    } else {
+      return res.status(401).json({ err: "Invalid credentials" });
+    }
   });
 });
 
@@ -105,11 +284,9 @@ app.get("/bussinessDashboard", (req, res) => {
     email = decoded.email;
     const query =
       "SELECT fullname,email FROM bussinessuser_table WHERE email = ?";
-
     db.query(query, [email], (err, result) => {
       if (err) return res.status(500).json({ error: "Database error" });
       if (result.length > 0) {
-        //   console.log(result[0].fullname);
         res.json({ name: result[0].fullname, email: result[0].email });
       } else res.status(404).json({ error: "User not found" });
     });
@@ -135,7 +312,6 @@ app.get("/generateInvoice", (req, res) => {
     if (err) return res.status(500).json({ error: "Database error" });
     if (result.length === 0)
       return res.status(404).json({ error: "Business user not found" });
-
     const { fullname, email, companyName, phone, city } = result[0];
     // console.log("Company name is : ",companyName);
 
@@ -155,26 +331,29 @@ app.get("/generateInvoice", (req, res) => {
         fullname: client.fullname,
         email: client.email,
       }));
-
       // console.log("Fetched clients : ",clientData);
       // res.json(clientData);
     });
 
-    const query3 =
-      "SELECT invoiceNumber FROM allInvoices_table ORDER BY CAST(SUBSTRING(invoiceNumber, 6) AS UNSIGNED) DESC LIMIT 1";
-    db.query(query3, [companyName], (err, invoice) => {
-      if (err)
+    const first2Char = (companyName || "XX").substring(0, 2).toUpperCase();
+
+    const prefix = `INV${first2Char}`;
+    const query3 = `SELECT invoiceNumber from allinvoices_table WHERE invoiceNumber LIKE ? ORDER BY CAST(SUBSTRING(invoiceNumber,5+1+2) AS UNSIGNED) DESC LIMIT 1`;
+    db.query(query3, [`${prefix}%`], (err, invoice) => {
+      if (err) {
         return res
           .status(500)
           .json({ error: "Database error while fetching invoice number" });
-      //console.log("Invoice number is: ",invoice);
+      }
+      let digitPart = 1;
+      if (invoice.length > 0 && invoice[0].invoiceNumber) {
+        digitPart = parseInt(invoice[0].invoiceNumber.substring(5)) + 1;
+      }
+      const newInvoiceNumber = `INV${first2Char}${String(digitPart).padStart(
+        3,
+        "0"
+      )}`;
 
-      let newInvoiceNumber = "INV";
-      const first2Char = companyName.substring(0, 2);
-      newInvoiceNumber = newInvoiceNumber + first2Char;
-      const digitPart = parseInt(invoice[0].invoiceNumber.substring(5)) + 1;
-      newInvoiceNumber = newInvoiceNumber + digitPart;
-      newInvoiceNumber = newInvoiceNumber.toUpperCase();
       //console.log("New invoice number is",newInvoiceNumber);
       /*  console.log({
                     name: fullname,
@@ -238,6 +417,7 @@ app.get("/getGST", async (req, res) => {
 });
 
 app.post("/saveInvoice", async (req, res) => {
+  console.log(res.status);
   const {
     name,
     companyName,
@@ -253,10 +433,11 @@ app.post("/saveInvoice", async (req, res) => {
     itemPriceTotal,
     gstTotal,
     grandTotal,
+    status,
   } = req.body;
 
   const invoiceQuery =
-    "INSERT INTO allinvoices_table (billedBy,billerCompany,billerEmail,billerPhone,billerCity,clientName,clientEmail,issueDate,dueDate,invoiceNumber) VALUES(?,?,?,?,?,?,?,?,?,?)";
+    "INSERT INTO allinvoices_table (billedBy,billerCompany,billerEmail,billerPhone,billerCity,clientName,clientEmail,issueDate,dueDate,invoiceNumber,status) VALUES(?,?,?,?,?,?,?,?,?,?,?)";
   db.query(
     invoiceQuery,
     [
@@ -270,6 +451,7 @@ app.post("/saveInvoice", async (req, res) => {
       issueDate,
       dueDate,
       invoiceNumber,
+      status,
     ],
     (err, result) => {
       if (err) {
@@ -359,7 +541,7 @@ app.post("/saveInvoiceChangesToDataBase", async (req, res) => {
 
 app.get("/recentInvoice", (req, res) => {
   const email = req.query.email;
-  //console.log("The email is: ",email)
+  console.log("The email is: ",email)
   if (!email) {
     return res.status(400).json({ error: "email is required" });
   }
@@ -375,7 +557,7 @@ app.get("/recentInvoice", (req, res) => {
     if (result.length === 0) {
       return res.status(200).json({ invoice: null });
     }
-
+    //console.log("Recent invoice is: ",result[0]);
     res.status(200).json({ invoice: result[0] });
   });
 });
@@ -395,6 +577,24 @@ app.get("/getInvoiceNumbers", (req, res) => {
     "SELECT invoiceNumber from allinvoices_table WHERE billerEmail = ?";
 
   db.query(query, [email], (err, result) => {
+    if (err) return res.status(500).json({ error: "Database error" });
+    if (result.length === 0)
+      return res.status(404).json({ error: "No invoices generated yet" });
+
+    invoices = result.map((row) => ({
+      invoiceNumber: row.invoiceNumber,
+    }));
+
+    res.json({ invoices });
+    //console.log("FEtched invoice number s are : ",invoices);
+  });
+});
+
+//this is for saved invoices page on the basis of status we are fetching in this and in above all inoivces are fetched.
+app.get("/getSavedInvoiceNumbers", (req, res) => {
+  const query =
+    "SELECT invoiceNumber from allinvoices_table WHERE billerEmail = ? AND status = ?";
+  db.query(query, [email, "save"], (err, result) => {
     if (err) return res.status(500).json({ error: "Database error" });
     if (result.length === 0)
       return res.status(404).json({ error: "No invoices generated yet" });
@@ -521,9 +721,9 @@ app.post("/generateInvoicePDF", async (req, res) => {
     const page = await browser.newPage();
     // Generate HTML for the invoice
     let itemsHtml = "";
+    console.log("Items are :", req.body.lines);
     req.body.lines.forEach((item) => {
-      itemsHtml += (
-       ` <tr>
+      itemsHtml += ` <tr>
           <td>${item.description}</td>
           <td>${item.rate}</td>
           <td>${item.qty}</td>
@@ -531,8 +731,7 @@ app.post("/generateInvoicePDF", async (req, res) => {
           <td>
             ${item.rate * item.qty + (item.rate * item.qty * item.gst) / 100}
           </td>
-        </tr>`
-      );
+        </tr>`;
     });
 
     const content = `
@@ -733,62 +932,214 @@ app.post("/generateInvoicePDF", async (req, res) => {
     res.end(pdfBuffer);
 
     //After sending PDF,creatr calendar event for reminder
-    await createPaymentReminder(req.body.selectedClient,req.body.dueDate,req.body.grandTotal);
-  } 
-  catch (error) {
+    await createPaymentReminder(
+      req.body.selectedClient,
+      req.body.dueDate,
+      req.body.grandTotal
+    );
+  } catch (error) {
     console.error("Error generating PDF:", error);
     res.status(500).json({ success: false, message: "Failed to generate PDF" });
   }
-
 });
 
-async function createPaymentReminder(clientName,dueDate,amount) {
+async function createPaymentReminder(clientName, dueDate, amount) {
   const auth = new google.auth.GoogleAuth({
-    keyFile: path.join(__dirname,'keys/service-account-key.json'),
-    scopes: ['https://www.googleapis.com/auth/calendar'],
+    keyFile: path.join(__dirname, "keys/service-account-key.json"),
+    scopes: ["https://www.googleapis.com/auth/calendar"],
   });
 
   const authClient = await auth.getClient();
-  const calendar = google.calendar({version:'v3',auth:authClient});
-  const calendarId = 'primary';
+  const calendar = google.calendar({ version: "v3", auth: authClient });
+  const calendarId = "primary";
   const event = {
-    summary:`Payment Reminder: ${clientName}`,
-    description:`Payment of ₹{amount} is due.`,
-    start:{
+    summary: `Payment Reminder: ${clientName}`,
+    description: `Payment of ₹{amount} is due.`,
+    start: {
       dateTime: new Date(dueDate).toISOString(),
-      timezone: 'Asia/kolkata',
+      timezone: "Asia/kolkata",
     },
-    end:{
-      dateTime:new Date(dueDate).toISOString(),
-      timezone:'Asia/kolkata',
+    end: {
+      dateTime: new Date(dueDate).toISOString(),
+      timezone: "Asia/kolkata",
     },
-    reminders:{
+    reminders: {
       useDefault: false,
-      overrides:[
-        {method: 'email',minutes:24*60},
-        {method: 'popup',minutes: 10},
+      overrides: [
+        { method: "email", minutes: 24 * 60 },
+        { method: "popup", minutes: 10 },
       ],
     },
   };
 
   const response = await calendar.events.insert({
-    calendarId:'primary',
+    calendarId: "primary",
     resource: event,
   });
   //console.log('Event created: %s',response.data.htmlLink);
 }
 
 app.post("/sendInvoiceEmail", async (req, res) => {
- // console.log("Email sending request received!");
-  const { senderEmail, recipientEmail, clientName, pdfBase64, calendarLink } = req.body;
-
+  // console.log("Email sending request received!");
+  const { senderEmail, recipientEmail, clientName, pdfBase64, calendarLink } =
+    req.body;
+  //console.log("Sender email id in backend is: ",senderEmail);
+  //console.log("Selected email id in backend is: ",recipientEmail);
   try {
-    await sendEmail(senderEmail, recipientEmail, clientName, pdfBase64, calendarLink);
+    await sendEmail(
+      senderEmail,
+      recipientEmail,
+      clientName,
+      pdfBase64,
+      calendarLink
+    );
     res.json({ success: true, message: "Invoice email sent successfully" });
   } catch (error) {
     console.error("Error sending email:", error);
     res.status(500).json({ success: false, message: "Failed to send email" });
   }
+});
+
+app.get("/getAllInvoicesData", (req, res) => {
+  const query = "SELECT * from allinvoices_table";
+  db.query(query, (err, result) => {
+    if (err) return res.status(500).json({ error: "Database error" });
+    if (result.length === 0)
+      return res.status(404).json({ error: "No invoices generated yet" });
+    //console.log(result);
+    res.json({ result });
+  });
+});
+
+app.get("/getTrackInvoicesData",(req,res)=>{
+  const email = req.query.email;
+  const query = "SELECT * from allinvoices_table WHERE billerEmail = ?";
+  db.query(query,[email], (err, result) => {
+    if (err) return res.status(500).json({ error: "Database error" });
+    console.log(result);
+    if (result.length === 0)
+      return res.status(404).json({ error: "No invoices generated yet" });
+    //console.log(result);
+    res.json({ result });
+  });
+})
+
+//report data
+app.get("/getReportData", (req, res) => {
+  const email = req.query.email;
+  let totalClients = 0;
+  let noOfInvoices = 0;
+  let noOfSentInvoices = 0;
+  let noOfSavedInvoices = 0;
+  let totalRevenue = 0;
+  if (!email) {
+    return res.status(400).json({ error: "No user is signed in!" });
+  }
+  const query1 =
+    "SELECT COUNT(*) as totalInvoices FROM allinvoices_table WHERE billerEmail = ?";
+  db.query(query1, [email], (err, result1) => {
+    if (err) {
+      return res.status(500).json({ error: "Database error" });
+    }
+    noOfInvoices = result1[0].totalInvoices;
+
+    const query2 =
+      "SELECT COUNT(*) as totalInvoicesSent FROM allinvoices_table WHERE billerEmail = ? AND status = 'sent'";
+    db.query(query2, [email], (err, result2) => {
+      if (err) {
+        return res.status(500).json({ error: "Database error" });
+      }
+      noOfSentInvoices = result2[0].totalInvoicesSent;
+
+      const query3 =
+        "SELECT COUNT(*) as totalInvoiceSaved FROM allinvoices_table WHERE billerEmail = ? AND status = 'saved'";
+      db.query(query3, [email], (err, result3) => {
+        if (err) {
+          return res.status(500).json({ error: "Database error" });
+        }
+        noOfSavedInvoices = result3[0].totalInvoiceSaved;
+
+        const query4 = `SELECT SUM(i.itemRate * i.itemQty + (i.itemRate * i.itemQty * i.itemGST / 100)) AS totalRevenue 
+        FROM invoiceselecteditems_table i 
+        JOIN allinvoices_table a 
+        ON i.invoiceNumber = a.invoiceNumber 
+        WHERE a.billerEmail = ?`;
+        db.query(query4, [email], (err, result4) => {
+          if (err) {
+            return res.status(500).json({ error: "Database error" });
+          }
+          totalRevenue = parseFloat(result4[0].totalRevenue);
+          console.log("Total revenue : ",totalRevenue);
+          res.status(200).json({
+            totalInvoices: noOfInvoices,
+            totalInvoicesSent: noOfSentInvoices,
+            totalInvoicesSaved: noOfSavedInvoices,
+            totalRevenue: totalRevenue,
+          });
+        });
+      });
+    });
+  });
+});
+
+app.get("/getTopClientAndMonthlyRevenue", (req, res) => {
+  const email = req.query.email;
+  const topClientsQuery = `
+    SELECT i.clientName,
+    SUM(s.itemRate * s.itemQty + (s.itemRate * s.itemQty * s.itemGST / 100)) AS totalRevenue
+    FROM invoiceselecteditems_table s
+    JOIN allinvoices_table i ON s.invoiceNumber = i.invoiceNumber
+    WHERE i.billerEmail = ?
+    GROUP BY i.clientName
+    ORDER BY totalRevenue DESC
+    LIMIT 2`;
+
+  const monthlyRevenueQuery = `
+    SELECT SUM(s.itemRate * s.itemQty + (s.itemRate * s.itemQty * s.itemGST / 100)) AS monthlyRevenue
+    FROM invoiceselecteditems_table s
+    JOIN allinvoices_table i ON s.invoiceNumber = i.invoiceNumber
+    WHERE i.billerEmail = ? 
+    AND MONTH(i.issueDate) = MONTH(CURRENT_DATE()) 
+    AND YEAR(i.issueDate) = YEAR(CURRENT_DATE())`;
+  db.query(topClientsQuery, [email], (err1, topClientsResult) => {
+    if (err1) {
+      console.error("Top clients query error:", err1);
+      return res
+        .status(500)
+        .json({ error: "Database error in top clients query", details: err1 });
+    }
+    db.query(monthlyRevenueQuery, [email], (err2, monthlyRevenueResult) => {
+      if (err2) {
+        console.error("Monthly revenue query error:", err2);
+        return res
+          .status(500)
+          .json({ error: "Database error in revenue query", details: err2 });
+      }
+      const monthlyRevenue = monthlyRevenueResult[0]?.monthlyRevenue || 0;
+      // console.log("Top clients: ", topClientsResult);
+      //console.log("Monthly revenue: ", monthlyRevenue);
+      return res.status(200).json({
+        topClients: topClientsResult,
+        currentMonthRevenue: monthlyRevenue,
+      });
+    });
+  });
+});
+
+app.post("/updateClient", (req, res) => {
+  const { fullname, email, phone } = req.body;
+  const query = `UPDATE businessclients_table SET fullname = ?, email = ?, phone = ? WHERE email = ?`;
+
+  db.query(query, [fullname, email, phone, email], (err, result) => {
+    if (err) {
+      console.error("Error updating client:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+    if (result.length === 0) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+    res.status(200).json({ message: "Client updated successfully" });
+  });
 });
 
 app.listen(5000, () => {

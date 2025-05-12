@@ -5,7 +5,7 @@ const NewClientForm = ({ onClose,companyName }) => {
     fullname:"",
     email:"",
     phone:"",
-    companyName:companyName,
+    companyName:companyName, //we need to add the bussiness user who is making the client also
   });
   const handleChange = (e) => {
     setFormData({...formData,[e.target.name]:e.target.value});

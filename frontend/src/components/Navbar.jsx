@@ -21,22 +21,24 @@ const Navbar = () => {
   };
 
   const handleLogout = async () => {
+    if(window.confirm("Sure you want to logout?")) {
     try {
       const response = await axios.post('http://localhost:5000/logout', {}, { withCredentials: true });
       if (response.status === 200) {
         toast.error(response.data.msg);
         setTimeout(() => {
           navigate("/");
-        }, 500);
+        }, 1000);
       }
     } catch (error) {
       console.error("Logout failed: ", error);
     }
+  }
   };
 
   return (
     <div className="left w-1/5 h-auto bg-blue-700">
-      <h2 className="text-white font-bold text-4xl mt-10 ml-5">Dashboard</h2>
+      <h2 className="text-white font-bold text-4xl mt-10 ml-5 ">Business Dashboard</h2>
       <div className="text-2xl mt-20 ml-7">
         <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToHome}>Home</h3>
         <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToInvoice}>Invoices</h3>

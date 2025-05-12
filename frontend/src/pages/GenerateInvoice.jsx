@@ -140,7 +140,8 @@ const GenerateInvoice = () => {
     //console.log("Selected client is : ", selectedClient, " ", selectedEmail);
   }, [selectedClient, selectedEmail]);
 
-  const saveInvoiceToDataBase = async () => {
+  const saveInvoiceToDataBase = async (statusValue) => {
+    let status;
     const invoiceData = {
       name,
       companyName,
@@ -156,8 +157,9 @@ const GenerateInvoice = () => {
       itemPriceTotal,
       gstTotal,
       grandTotal,
+      status:statusValue,
     };
-    //console.log("This data is going to be saveddddd",invoiceData);
+    console.log("This data is going to be saveddddd",invoiceData);
     try {
       const response = await fetch('http://localhost:5000/saveInvoice', {
         method: "POST",
@@ -169,8 +171,13 @@ const GenerateInvoice = () => {
 
       const data = await response.json();
       if (response.ok) {
-        // alert("Invoice saved successfully!");
         toast.success("Invoice saved successfully.");
+        setSelectedClient("");
+        setSelectedEmail("");
+        setLines([]);
+        setItemPriceTotal(0);
+        setGrandTotal(0);
+        setInvoiceNumber("");
         setTimeout(() => {
           //navigate("/");
         }, 500);
@@ -183,6 +190,8 @@ const GenerateInvoice = () => {
       console.error("Error saving invoice:", error);
       alert("Failed to save invoice.");
     }
+    //clear all input 
+
   };
 
   const deleteItem = (index) => {
@@ -210,7 +219,6 @@ const GenerateInvoice = () => {
     `.trim();
   };
 
-
   function formatDateForICS(date) {
     const d = new Date(date + 'T00:00:00Z'); 
     return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
@@ -220,8 +228,8 @@ const GenerateInvoice = () => {
     event.preventDefault();
     const name = selectedClient.replace(/\s+/g, "").toLowerCase();
     const email = name + "@resend.dev"; // Dummy email, replace later.
-    console.log("Due date is:", dueDate);
-
+    //console.log("Due date is:", dueDate);
+    console.log("In Lines is: ",lines);
     try {
       // Step 1: Generate Invoice PDF
       const pdfResponse = await fetch("http://localhost:5000/generateInvoicePDF", {
@@ -229,14 +237,12 @@ const GenerateInvoice = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           lines, name, companyName, bemail, phone, city, selectedClient, selectedEmail,
-          issueDate, dueDate, invoiceNumber, itemPriceTotal, gstTotal, grandTotal
+          issueDate, dueDate, invoiceNumber, itemPriceTotal, gstTotal, grandTotal,
         }),
       });
-
       if (!pdfResponse.ok) {
         throw new Error("Failed to generate invoice PDF.");
       }
-
       // Convert response into a Blob
       const pdfBlob = await pdfResponse.blob();
       // Open the PDF in a new tab
@@ -252,6 +258,7 @@ const GenerateInvoice = () => {
       //console.log("in string format: ",startDateTime);
       const googleCalendarLink = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&&dates=${startDateTime}/${endDateTime}&details=${eventDescription}`;
       //console.log("Calendar link : ",googleCalendarLink);
+      //console.log("Selected email address is : ",selectedEmail);
       const emailResponse = await fetch("http://localhost:5000/sendInvoiceEmail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -269,7 +276,6 @@ const GenerateInvoice = () => {
       } else {
         alert("Failed to send invoice email.");
       }
-
     } catch (error) {
       console.error("Error:", error);
       alert("Something went wrong!");
@@ -289,6 +295,11 @@ const GenerateInvoice = () => {
     });
   };
 
+  const handleSendToClient = async(e) => {
+    e.preventDefault();
+    await saveInvoiceToDataBase("sent");
+    await sendInvoiceEmail(e);
+  }
 
   return (
     <div className="min-h-screen flex flex-col justify-between items-center bg-gradient-to-l from-blue-100 to-blue-300 relative">
@@ -297,7 +308,7 @@ const GenerateInvoice = () => {
           <h3 className='text-3xl font-bold text-blue-700 mt-2'>New Invoice</h3>
           <div className='flex gap-4'>
             <a href="#" className='mt-4 mr-3 text-red-600 underline' onClick={() => window.history.back()}>Cancel</a>
-            <button className='pt-1 pb-1 pr-4 pl-4 bg-blue-600 text-white mt-2 rounded' onClick={saveInvoiceToDataBase}>Save</button>
+            <button className='pt-1 pb-1 pr-4 pl-4 bg-blue-600 text-white mt-2 rounded' onClick={() => {saveInvoiceToDataBase("saved")}}>Save</button>
           </div>
         </div>
         <form action="" className='mt-4 mb-7 bg-white p-6 rounded shadow-lg'>
@@ -307,7 +318,6 @@ const GenerateInvoice = () => {
             <p className='mt-2'><strong>Phone: {phone ? `${phone}` : "Loading..."}</strong></p>
             <p className='mt-2'><strong>Address: {city ? `${city}` : "Loading..."}</strong></p>
           </div>
-
           <div className='flex gap-20 mt-6'>
             <div className='flex flex-col w-1/4'>
               <div className='font-bold'>Billed to</div>
@@ -338,7 +348,6 @@ const GenerateInvoice = () => {
               <div className='mt-3 text-2xl text-green-700 font-semibold'>₹ {grandTotal}</div>
             </div>
           </div>
-
           <hr className='mt-5 border-gray-400' />
           <div className='flex text-zinc-600 mt-2 mb-4 font-semibold'>
             <div className='w-1/2'>Description</div>
@@ -347,7 +356,6 @@ const GenerateInvoice = () => {
             <div className='w-1/6 text-center'>Line Total</div>
             <div className='w-1/6 text-center'>After GST</div>
           </div>
-
           {lines.map((line, index) => (
             <div key={index} className='flex text-zinc-500 mt-2'>
               <i className='bi bi-trash text-red-500 cursor-pointer mr-2 mt-2' onClick={() => deleteItem(index)}></i>
@@ -367,11 +375,9 @@ const GenerateInvoice = () => {
               />
             </div>
           ))}
-
           <div className='mt-3 w-full border-dashed border-2 border-blue-500 rounded p-3 text-center cursor-pointer hover:bg-blue-100' onClick={addLine}>
             + Add a Line
           </div>
-
           <div className='flex flex-col items-end mt-6'>
             <div className='flex justify-between w-1/4'>
               <div className='font-semibold'>Subtotal</div>
@@ -388,7 +394,7 @@ const GenerateInvoice = () => {
             </div>
           </div>
           <div className='flex justify-end'>
-            <button className='bg-blue-600 mt-5 w-40 p-3 font-bold text-white rounded hover:bg-blue-700 transition duration-300' onClick={sendInvoiceEmail}>Send to Client</button>
+            <button className='bg-blue-600 mt-5 w-40 p-3 font-bold text-white rounded hover:bg-blue-700 transition duration-300' onClick={handleSendToClient}>Send to Client</button>
           </div>
         </form>
       </div>

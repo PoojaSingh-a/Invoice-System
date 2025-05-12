@@ -1,22 +1,29 @@
-import React from "react";
+import React, { useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import { Autoplay } from "swiper/modules";
 import Footer from "../components/Footer.jsx";
-import { useNavigate } from "react-router-dom";
-
+import LoginModal from "../components/LoginModal.jsx";
+import RegisterModal from "../components/RegisterModal.jsx";
 // Import images dynamically
 const images = Object.values(import.meta.glob("../assets/*.png", { eager: true })).map((img) => img.default);
 
 const Index = () => {
-  const navigate = useNavigate(); 
+  const [showLoginModal,setShowLoginModal] = useState(false);
+  const [showRegisterModal,setShowRegisterModal] = useState(false);
 
-  const handleLoginRedirect = () => {
-    navigate("/login");
-  };
-  const handleRegisterRedirect = () => {
-    navigate("/register");
-  };
+  const handleLoginClick = () => {
+    setShowLoginModal(true);
+  }
+  const handleRegisterClick = () => {
+    setShowRegisterModal(true);
+  }
+  const handleCloseLoginModal = () => {
+    setShowLoginModal(false);
+  }
+  const handleCloseRegisterModal = () => {
+    setShowRegisterModal(false);
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-r from-blue-100 to-blue-300">
@@ -38,12 +45,12 @@ const Index = () => {
           </p>
           {/* Buttons */}
           <div className="flex mt-8 space-x-6">
-            <button className="bg-blue-700 hover:bg-blue-900 text-white px-6 py-3 rounded-lg shadow-md text-lg transition duration-300" onClick={handleRegisterRedirect}>
+            <button className="bg-blue-700 hover:bg-blue-900 text-white px-6 py-3 rounded-lg shadow-md text-lg transition duration-300" onClick={handleRegisterClick}>
               Get Started
             </button>
             <button
               className="bg-gray-700 hover:bg-gray-900 text-white px-6 py-3 rounded-lg shadow-md text-lg transition duration-300"
-              onClick={handleLoginRedirect} 
+              onClick={handleLoginClick}
             >
               Login
             </button>
@@ -71,6 +78,16 @@ const Index = () => {
 
       {/* Footer Component */}
       <Footer />
+      {showLoginModal && (
+        <div className="fixed inset-0 z-50">
+          <LoginModal onClose={handleCloseLoginModal}/>
+          </div>
+      )}
+      {showRegisterModal && (
+        <div className="fixed inset-0 z-50">
+          <RegisterModal onClose={handleCloseRegisterModal}/>
+          </div>
+      )}
     </div>
   );
 };
