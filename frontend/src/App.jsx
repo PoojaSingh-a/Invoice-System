@@ -15,6 +15,7 @@ import InvoiceReadMore from "./pages/InvoiceReadMore";
 import TrackInvoiceForm from "./pages/TrackInvoiceForm";
 import ProtectedRoutes from "./components/ProtectedRoutes";
 import SavedInvoicesPage from "./pages/SavedInvoicesPage";
+import ClientSideAllInvoices from "./pages/ClientSideAllInvoices";
 
 const App = () => {
   return (
@@ -33,6 +34,7 @@ const App = () => {
           <Route path="/trackInvoiceForm" element={<TrackInvoiceForm />} />
           <Route path="/InvoiceReadMore/:invoiceNumber" element={<InvoiceReadMore />} />
           <Route path="/savedInvoiceForm" element={<SavedInvoicesPage />} />
+          <Route path="/ClientSideAllInvoices" element={<ClientSideAllInvoices />} />
         </Route>
       </Routes>
       

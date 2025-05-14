@@ -7,7 +7,6 @@ import "react-toastify/dist/ReactToastify.css";
 import { FaRegFolderOpen, FaDownload, FaEnvelopeOpenText } from 'react-icons/fa';
 import { MdTrackChanges } from 'react-icons/md';
 import { FiAlertCircle } from 'react-icons/fi';
-// ...imports remain the same
 import { BsCardList } from 'react-icons/bs';
 
 const ClientDashboard = () => {
@@ -16,7 +15,7 @@ const ClientDashboard = () => {
   const [recentInvoice, setRecentInvoice] = useState(null);
   const navigate = useNavigate();
 
-  const fetchRecentInvoice = async () => {
+ /* const fetchRecentInvoice = async () => {
     try {
       const res = await fetch(`http://localhost:5000/recentInvoice?email=${email}`, {
         method: "GET",
@@ -31,16 +30,17 @@ const ClientDashboard = () => {
     } catch (error) {
       setRecentInvoice(null);
     }
-  };
+  };*/
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const res = await fetch("http://localhost:5000/bussinessDashboard", {
+        const res = await fetch("http://localhost:5000/clientDashboard", {
           method: "GET",
           credentials: "include",
         });
         const data = await res.json();
+        console.log("Client dashboard user is : ",data);
         if (res.ok) {
           setName(data.name);
           setEmail(data.email);
@@ -53,7 +53,7 @@ const ClientDashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (email) fetchRecentInvoice();
+   // if (email) fetchRecentInvoice();
   }, [email]);
 
   const navigateTo = (path) => navigate(path);
@@ -85,7 +85,7 @@ const ClientDashboard = () => {
             <div className="flex flex-col gap-6 w-full lg:w-1/2">
               <button
                 className="group flex items-center justify-between gap-4 bg-white rounded-xl p-4 border text-lg border-blue-600 hover:bg-blue-600 hover:text-white transition duration-300 shadow-md"
-                onClick={() => navigateTo("/savedInvoiceForm")}
+                onClick={() => navigateTo("/ClientSideAllInvoices")}
               >
                 <FaRegFolderOpen size={22} className="text-blue-600 group-hover:text-white" />
                 View All Invoices

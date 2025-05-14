@@ -17,81 +17,95 @@ const RegisterModal = ({ onClose }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordStrength, setPasswordStrength] = useState('');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!fullName || !email || !password || !city || !accountType) {
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!fullName || !email || !password || !city || !accountType) {
+    toast.error("Please fill all required fields");
+    return;
+  }
+  if(accountType === "Business"){
+    if(!phone|| !companyName || !companyWork || !revenue || !currentMethod){
       toast.error("Please fill all required fields");
       return;
     }
-    if (accountType === "Business") {
-      try {
-        const response = await fetch('http://localhost:5000/businessRegisteration', {
-          method: 'POST',
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            fullname: fullName,
-            email,
-            password,
-            city,
-            phone,
-            companyName,
-            companyWork,
-            revenue,
-            currentMethod
-          }),
-        });
-
-        const data = await response.json();
-        console.log(data); // Check if data is what you expect
-        if (response.ok) {
-          toast.success("Registration successful");
+  }
+  if (password !== confirmPassword) {
+    toast.error("Passwords do not match");
+    return;
+  }
+  // Password strength check
+  const strength = zxcvbn(password);
+  if (password.length < 6 || strength.score < 3) {
+    toast.error("Password is not strong enough. Use a mix of letters, numbers, and symbols.");
+    return;
+  }
+  // Proceed only if password is strong and matches
+  if (accountType === "Business") {
+    try {
+      const response = await fetch('http://localhost:5000/businessRegisteration', {
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          fullname: fullName,
+          email,
+          password,
+          city,
+          phone,
+          companyName,
+          companyWork,
+          revenue,
+          currentMethod
+        }),
+      });
+      const data = await response.json();
+     if (response.ok) {
+        toast.success("Registration successful");
+        setTimeout(() => {
           onClose();
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
-        } else {
-          toast.error("Registration failed - " + data.message);
-        }
-      } catch (error) {
-        toast.error("Error during registration");
+          window.location.reload();
+        }, 2000);
+      } else {
+        toast.error("Registration failed - " + data.message);
       }
+    } catch (error) {
+      toast.error("Error during registration");
     }
+  }
 
-    if (accountType === "Client") {
-      try {
-        const response = await fetch('http://localhost:5000/clientRegisteration', {
-          method: 'POST',
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            fullname: fullName,
-            email,
-            password,
-            city
-          }),
-        });
+  if (accountType === "Client") {
+    try {
+      const response = await fetch('http://localhost:5000/clientRegisteration', {
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          fullname: fullName,
+          email,
+          password,
+          city
+        }),
+      });
 
-        const data = await response.json();
-        if (response.ok) {
-          toast.success("Registration successful");
-          setTimeout(() => {
-            onClose(); // ✅ close after some delay
-            window.location.reload(); // ✅ reload after toast shows
-          }, 2000); // give user 2 seconds to see toast
-        }
-        else {
-          toast.error("Registration failed - " + data.message);
-        }
-      } catch (error) {
-        toast.error("Error during registration");
+      const data = await response.json();
+      if (response.ok) {
+        toast.success("Registration successful");
+        setTimeout(() => {
+          onClose();
+          window.location.reload();
+        }, 2000);
+      } else {
+        toast.error("Registration failed - " + data.message);
       }
+    } catch (error) {
+      toast.error("Error during registration");
     }
-  };
+  }
+};
 
   return (
     <div className='fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300'>
@@ -195,6 +209,7 @@ const RegisterModal = ({ onClose }) => {
           <button className='bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition font-semibold' onClick={handleSubmit}>Register</button>
         </div>
       </div>
+      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 };

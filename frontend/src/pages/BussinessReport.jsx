@@ -6,6 +6,7 @@ import { FaUsers, FaFileInvoice, FaDollarSign, FaPaperPlane, FaSave } from 'reac
 const Report = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [totalClients,setTotalClients] = useState(0);
   const [totalInvoices, setTotalInvoices] = useState(0);
   const [totalInvoicesSent, setTotalInvoicesSent] = useState(0);
   const [totalInvoiceSaved, setTotalInvoiceSaved] = useState(0);
@@ -43,6 +44,7 @@ const Report = () => {
         const data = await response.json();
         console.log("Data from backend is : ",data);
         if (response.ok) {
+          setTotalClients(data.totalClients);
           setTotalInvoices(data.totalInvoices);
           setTotalInvoicesSent(data.totalInvoicesSent);
           setTotalInvoiceSaved(data.totalInvoicesSaved);
@@ -94,19 +96,26 @@ const Report = () => {
   }, [email]);
 
   return (
-    <div className="min-h-screen overflow-auto flex flex-col bg-gradient-to-l from-blue-100 to-blue-300">
+    <div className="min-h-screen flex flex-col bg-gradient-to-tr from-indigo-400 via-teal-100 to-blue-300">
       <div className="flex flex-1">
         <Navbar />
-        <div className="right w-4/5 h-auto flex flex-col p-8">
-          <h2 className="text-black font-bold text-4xl mt-2 ml-5 mb-6">Report</h2>
-          <div className='grid grid-cols-3 gap-6 mt-12 mb-10'>
-            <ReportCard title="Total Clients" value="45" icon={<FaUsers size={30} />} />
+        <div className="right w-4/5 h-auto flex flex-col p-6">
+          <div className='bg-white/80 p-6 rounded-3xl shadow-xl ml-4 mt-4 mb-0'>
+            <h2 className="text-3xl text-blue-700 font-semibold font-serif">
+              Report
+            </h2>
+            <p className='mt-2 text-gray-600 text-lg'>
+              Overall report of the business.
+            </p>
+          </div>
+          <div className='ml-4 grid grid-cols-3 gap-6 mt-12 mb-10'>
+            <ReportCard title="Total Clients" value={totalClients} icon={<FaUsers size={30} />} />
             <ReportCard title="Total Invoices" value={totalInvoices} icon={<FaFileInvoice size={30} />} />
             <ReportCard title="Total Revenue" value={totalRevenue} icon={<FaDollarSign size={30} />} />
             <ReportCard title="Sent Invoices" value={totalInvoicesSent} icon={<FaPaperPlane size={30} />} />
             <ReportCard title="Saved Invoices" value={totalInvoiceSaved} icon={<FaSave size={30} />} />
           </div>
-          <Section title="Recent Invoice">
+          <Section title="Recent Invoice" className="ml-4">
             <div className="overflow-x-auto">
               <table className="min-w-full table-auto text-left shadow-md rounded-lg overflow-hidden">
                 <thead className="bg-blue-100 text-gray-700 uppercase text-sm">
@@ -153,7 +162,7 @@ const Report = () => {
               </table>
             </div>
           </Section>
-          <Section className="bg-white mt-5 p-4 rounded-xl shadow-md">
+          <Section className="bg-white mt-5 ml-4 p-4 rounded-xl shadow-md">
             <h2 className="text-2xl font-semibold text-gray-800 mb-4">Top Clients</h2>
             {topClient.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -169,7 +178,7 @@ const Report = () => {
             )}
           </Section>
 
-          <Section className="bg-white mt-5 p-4 rounded-xl shadow-md">
+          <Section className="bg-white mt-5  ml-4 p-4 rounded-xl shadow-md">
             <h2 className="text-2xl font-semibold text-gray-800 mb-4">Monthly Revenue</h2>
             <div className="bg-green-50 border-l-4 border-green-400 text-green-700 p-4 rounded-md">
               {monthlyRevenue !== null ? (

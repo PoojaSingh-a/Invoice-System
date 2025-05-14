@@ -152,6 +152,7 @@ app.post("/businessRegisteration", async (req, res) => {
   });
 });
 
+// Business Login
 app.post("/businessLogin", async (req, res) => {
   const { email, password } = req.body;
   const query = "SELECT * FROM bussinessuser_table WHERE email = ?";
@@ -176,13 +177,13 @@ app.post("/businessLogin", async (req, res) => {
         }
 
         //Token generation
-        const token = jwt.sign(
+        const token1 = jwt.sign(
           { email: user.email, usertype: user.userType },
           SECRET_KEY,
           { expiresIn: "1h" }
         );
 
-        res.cookie("authToken", token, {
+        res.cookie("authToken", token1, {
           httpOnly: true,
           secure: false,
           sameSite: "strict",
@@ -228,13 +229,13 @@ app.post("/clientLogin", async (req, res) => {
         }
 
         //Token generation
-        const token = jwt.sign(
+        const token2 = jwt.sign(
           { email: user.email, usertype: user.userType },
           SECRET_KEY,
           { expiresIn: "1h" }
         );
 
-        res.cookie("authToken", token, {
+        res.cookie("authToken", token2, {
           httpOnly: true,
           secure: false,
           sameSite: "strict",
@@ -284,6 +285,25 @@ app.get("/bussinessDashboard", (req, res) => {
     email = decoded.email;
     const query =
       "SELECT fullname,email FROM bussinessuser_table WHERE email = ?";
+    db.query(query, [email], (err, result) => {
+      if (err) return res.status(500).json({ error: "Database error" });
+      if (result.length > 0) {
+        res.json({ name: result[0].fullname, email: result[0].email });
+      } else res.status(404).json({ error: "User not found" });
+    });
+  });
+});
+
+app.get("/clientDashboard", (req, res) => {
+  token = req.cookies.authToken;
+  if (!token) return res.status(401).json({ error: "Unauthorized: No Token" });
+
+  jwt.verify(token, SECRET_KEY, (err, decoded) => {
+    if (err)
+      return res.status(401).json({ error: "Unauthorized: Invalid Token" });
+
+    email = decoded.email;
+    const query = "SELECT fullname,email FROM clientuser_table WHERE email = ?";
     db.query(query, [email], (err, result) => {
       if (err) return res.status(500).json({ error: "Database error" });
       if (result.length > 0) {
@@ -541,12 +561,17 @@ app.post("/saveInvoiceChangesToDataBase", async (req, res) => {
 
 app.get("/recentInvoice", (req, res) => {
   const email = req.query.email;
-  console.log("The email is: ",email)
+  console.log("The email is: ", email);
   if (!email) {
     return res.status(400).json({ error: "email is required" });
   }
 
-  const query = `SELECT * FROM allinvoices_table WHERE billerEmail = ? ORDER BY issueDate DESC LIMIT 1`;
+  const query = `
+  SELECT * FROM allinvoices_table 
+  WHERE billerEmail = ? 
+  ORDER BY CAST(SUBSTRING(invoiceNumber, 6) AS UNSIGNED) DESC 
+  LIMIT 1
+`;
 
   db.query(query, [email], (err, result) => {
     if (err) {
@@ -594,7 +619,7 @@ app.get("/getInvoiceNumbers", (req, res) => {
 app.get("/getSavedInvoiceNumbers", (req, res) => {
   const query =
     "SELECT invoiceNumber from allinvoices_table WHERE billerEmail = ? AND status = ?";
-  db.query(query, [email, "save"], (err, result) => {
+  db.query(query, [email, "saved"], (err, result) => {
     if (err) return res.status(500).json({ error: "Database error" });
     if (result.length === 0)
       return res.status(404).json({ error: "No invoices generated yet" });
@@ -1011,10 +1036,10 @@ app.get("/getAllInvoicesData", (req, res) => {
   });
 });
 
-app.get("/getTrackInvoicesData",(req,res)=>{
+app.get("/getTrackInvoicesData", (req, res) => {
   const email = req.query.email;
   const query = "SELECT * from allinvoices_table WHERE billerEmail = ?";
-  db.query(query,[email], (err, result) => {
+  db.query(query, [email], (err, result) => {
     if (err) return res.status(500).json({ error: "Database error" });
     console.log(result);
     if (result.length === 0)
@@ -1022,59 +1047,67 @@ app.get("/getTrackInvoicesData",(req,res)=>{
     //console.log(result);
     res.json({ result });
   });
-})
+});
 
 //report data
 app.get("/getReportData", (req, res) => {
   const email = req.query.email;
-  let totalClients = 0;
-  let noOfInvoices = 0;
-  let noOfSentInvoices = 0;
-  let noOfSavedInvoices = 0;
-  let totalRevenue = 0;
   if (!email) {
     return res.status(400).json({ error: "No user is signed in!" });
   }
+
   const query1 =
     "SELECT COUNT(*) as totalInvoices FROM allinvoices_table WHERE billerEmail = ?";
   db.query(query1, [email], (err, result1) => {
-    if (err) {
-      return res.status(500).json({ error: "Database error" });
-    }
-    noOfInvoices = result1[0].totalInvoices;
+    if (err) return res.status(500).json({ error: "Database error" });
+    const noOfInvoices = result1[0].totalInvoices;
 
     const query2 =
       "SELECT COUNT(*) as totalInvoicesSent FROM allinvoices_table WHERE billerEmail = ? AND status = 'sent'";
     db.query(query2, [email], (err, result2) => {
-      if (err) {
-        return res.status(500).json({ error: "Database error" });
-      }
-      noOfSentInvoices = result2[0].totalInvoicesSent;
+      if (err) return res.status(500).json({ error: "Database error" });
+      const noOfSentInvoices = result2[0].totalInvoicesSent;
 
       const query3 =
         "SELECT COUNT(*) as totalInvoiceSaved FROM allinvoices_table WHERE billerEmail = ? AND status = 'saved'";
       db.query(query3, [email], (err, result3) => {
-        if (err) {
-          return res.status(500).json({ error: "Database error" });
-        }
-        noOfSavedInvoices = result3[0].totalInvoiceSaved;
+        if (err) return res.status(500).json({ error: "Database error" });
+        const noOfSavedInvoices = result3[0].totalInvoiceSaved;
 
         const query4 = `SELECT SUM(i.itemRate * i.itemQty + (i.itemRate * i.itemQty * i.itemGST / 100)) AS totalRevenue 
-        FROM invoiceselecteditems_table i 
-        JOIN allinvoices_table a 
-        ON i.invoiceNumber = a.invoiceNumber 
-        WHERE a.billerEmail = ?`;
+                        FROM invoiceselecteditems_table i 
+                        JOIN allinvoices_table a 
+                        ON i.invoiceNumber = a.invoiceNumber 
+                        WHERE a.billerEmail = ?`;
         db.query(query4, [email], (err, result4) => {
-          if (err) {
-            return res.status(500).json({ error: "Database error" });
-          }
-          totalRevenue = parseFloat(result4[0].totalRevenue);
-          console.log("Total revenue : ",totalRevenue);
-          res.status(200).json({
-            totalInvoices: noOfInvoices,
-            totalInvoicesSent: noOfSentInvoices,
-            totalInvoicesSaved: noOfSavedInvoices,
-            totalRevenue: totalRevenue,
+          if (err) return res.status(500).json({ error: "Database error" });
+          const totalRevenue = parseFloat(result4[0].totalRevenue) || 0;
+
+          // Get company name from billerEmail
+          const query5 = "SELECT billerCompany FROM allinvoices_table WHERE billerEmail = ? LIMIT 1";
+          db.query(query5, [email], (err, result5) => {
+            if (err || result5.length === 0) {
+              return res.status(500).json({ error: "Could not fetch company name" });
+            }
+            const companyName = result5[0].billerCompany;
+
+            console.log("Company name is : ",companyName);
+
+            const query6 =
+              "SELECT COUNT(DISTINCT email) AS totalClients FROM businessclients_table WHERE companyName = ?";
+            db.query(query6, [companyName], (err, result6) => {
+              if (err) return res.status(500).json({ error: "Database error" });
+              const totalClients = result6[0].totalClients;
+              console.log("Total clients are: ",totalClients);
+
+              res.status(200).json({
+                totalClients,
+                totalInvoices: noOfInvoices,
+                totalInvoicesSent: noOfSentInvoices,
+                totalInvoicesSaved: noOfSavedInvoices,
+                totalRevenue,
+              });
+            });
           });
         });
       });

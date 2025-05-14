@@ -112,7 +112,7 @@ const BussinessDashboard = () => {
                <h2>Track Invoice</h2>
               </button>              
             </div>
-            <div className="bg-white rounded-3xl border border-purple-200 p-6 w-full lg:w-1/2 shadow-lg">
+            <div className="bg-white rounded-3xl border border-blue-600 p-6 w-full lg:w-1/2 shadow-lg">
               <h6 className='text-lg font-bold text-blue-700 mb-4 border-b pb-2 flex items-center gap-2'>
                 <BsCardList className="text-blue-700 text-xl" size={22} />
                 Recently Created Invoice</h6>
@@ -128,7 +128,7 @@ const BussinessDashboard = () => {
                       {new Date(recentInvoice.dueDate).toISOString().split('T')[0]}
                     </span>
                   </p>
-                  <p className='mt-6 text-lg text-blue-600 cursor-pointer hover:text-green-600 transition' onClick={invoiceReadMore}>Read more →</p>
+                  <p className='mt-20 text-lg text-blue-600 cursor-pointer hover:text-green-600 transition' onClick={invoiceReadMore}>Read more →</p>
                 </>
               ) : (
                 <p className='text-gray-500 flex justify-center items-center mt-16'>No recent Invoice Found</p>

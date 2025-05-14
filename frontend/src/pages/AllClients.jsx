@@ -103,21 +103,25 @@ const Clients = () => {
   };
 
   return (
-    <div className="h-screen overflow-auto flex flex-col bg-gradient-to-l from-blue-100 to-blue-300">
+    <div className="min-h-screen flex flex-col bg-gradient-to-tr from-indigo-400 via-teal-100 to-blue-300">
       <div className={`flex flex-1 ${isFormOpen ? 'filter blur-sm' : ''}`}>
         <Navbar />
         <div className="right w-4/5 h-auto flex flex-col p-6">
-          <h2 className="text-black font-bold text-3xl mt-5 ml-5">
-            {name ? `Welcome, ${name}` : "Loading..."}
-          </h2>
-
-          <div className='flex justify-self-end'>
-            <button className='glow-button mt-14 w-80 bg-white hover:bg-blue-600 hover:text-white hover:shadow-glow transition duration-300 text-black p-3 text-lg rounded-lg ml-5 flex items-center gap-5 px-6 py-3' onClick={() => setIsFormOpen(true)}>
-              <FaPlusCircle size={24} />
+          <div className='bg-white/80 p-6 rounded-3xl shadow-xl ml-4 mt-4 mb-0'>
+            <h2 className="text-3xl text-blue-700 font-semibold font-serif">
+              All Clients
+            </h2>
+            <p className='mt-2 text-gray-600 text-lg'>
+              All Clients associated with the business.
+            </p>
+          </div>
+          <div className='flex justify-self-end mt-0'>
+            <button className='group glow-button mt-4 w-80 bg-white hover:bg-blue-600 hover:text-white hover:shadow-glow transition duration-300 text-black p-3 text-lg rounded-lg ml-5 flex items-center gap-5 px-6 py-3' onClick={() => setIsFormOpen(true)}>
+              <FaPlusCircle size={22} className='text-blue-600 group-hover:text-white'/>
               Create a New Client
             </button>
 
-            <div className='relative mt-14 ml-5 w-80'>
+            <div className='relative mt-4 ml-5 w-80'>
               <FaSearch className="absolute left-3 top-4 text-gray-400" />
               <input
                 type="text"
@@ -128,9 +132,9 @@ const Clients = () => {
             </div>
           </div>
 
-          <div className="mt-10 bg-white p-6 w-5/5 ml-5 rounded-lg shadow-md hover:shadow-2xl transition flex flex-col">
-            <div className='text-xl font-semibold mb-4 flex gap-3 items-center'>
-              <FaUserCircle size={26} className="text-blue-500" />
+          <div className="mt-5 bg-white p-6 w-5/5 ml-5 rounded-lg shadow-md hover:shadow-2xl transition flex flex-col">
+            <div className='text-xl font-semibold mb-1 flex gap-3 items-center'>
+              <FaUserCircle size={24} className="text-blue-500" />
               <h3>Existing Client</h3>
             </div>
 

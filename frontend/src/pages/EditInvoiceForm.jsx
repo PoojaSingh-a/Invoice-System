@@ -337,12 +337,12 @@ const EditInvoiceForm = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between items-center bg-gradient-to-l from-blue-100 to-blue-300 relative">
+    <div className="min-h-screen flex flex-col justify-between items-center bg-gradient-to-tr from-indigo-400 via-teal-100 to-blue-300">
       <div className="w-2/3 flex flex-col">
         <div className='flex justify-between'>
           <h3 className='text-3xl font-bold text-blue-700 mt-2'>Edit Invoice</h3>
           <div className='flex gap-4'>
-            <a href="#" className='mt-4 mr-3 text-red-600 underline' onClick={() => window.history.back()}>Cancel</a>
+            <button href="#" className='mt-2 mr-3 bg-red-600 hover:bg-red-700 pt-1 pb-1 pr-4 pl-4 rounded-md text-white' onClick={() => window.history.back()}>Cancel</button>
             <button className='pt-1 pb-1 pr-4 pl-4 bg-blue-600 text-white mt-2 rounded' onClick={() => { saveInvoiceChangesToDataBase("saved") }}>Save</button>
           </div>
         </div>

@@ -13,8 +13,8 @@ const ClientNavbar = () => {
   const NavigateToInvoice = () => {
     navigate('/allInvoices');
   };
-  const NavigateToClient = () => {
-    navigate('/allClients');
+  const NavigateToClientHome = () => {
+    navigate('/clientDashboard');
   };
   const NavigateToReport = () => {
     navigate('/bussinessReport');
@@ -40,7 +40,7 @@ const ClientNavbar = () => {
     <div className="left w-1/5 h-auto bg-blue-700">
       <h2 className="text-white font-bold text-4xl mt-10 ml-5">Client Dashboard</h2>
       <div className="text-2xl mt-20 ml-7">
-        <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToHome}>Home</h3>
+        <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToClientHome}>Home</h3>
         <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToInvoice}>Contact</h3>
         <h3 className="options text-white mt-6 cursor-pointer" onClick={handleLogout}>Logout</h3>
       </div>
