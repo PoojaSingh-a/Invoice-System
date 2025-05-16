@@ -34,7 +34,6 @@ const EditInvoiceForm = () => {
 
   //runs after every render
   useEffect(() => {
-    // will run only at initial render [] will not run after that
     const fetchInvoicesNumber = async () => {
       try {
         const response = await fetch("http://localhost:5000/getInvoiceNumbers", {
@@ -83,8 +82,6 @@ const EditInvoiceForm = () => {
         await handleInvoiceChange({target:{value: invoiceFormState}});
       }
     };
-
-    
     fetchData(); // Call fetchData after defining it
   }, []);
 
@@ -162,7 +159,7 @@ const EditInvoiceForm = () => {
   const deleteItem = (index) => {
     setItems(prevItems => prevItems.filter((_, i) => i !== index));
   };
-  /**Fetch GST from db*/
+
   const fetchGST = async (description, index, isItem) => {
     if (!description)
       return;

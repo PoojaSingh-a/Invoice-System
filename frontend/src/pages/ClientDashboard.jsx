@@ -50,10 +50,6 @@ const ClientDashboard = () => {
       }
     };
     fetchUserData();
-  }, []);
-
-  useEffect(() => {
-   // if (email) fetchRecentInvoice();
   }, [email]);
 
   const navigateTo = (path) => navigate(path);

@@ -113,9 +113,9 @@ app.post("/businessRegisteration", async (req, res) => {
     }
 
     try {
-      console.log("Password is : ", password); // Debugging
+      //console.log("Password is : ", password); // Debugging
       const hashedPassword = await bcrypt.hash(password, 10);
-      console.log("Hashed password is : ", hashedPassword); // Debugging
+      //console.log("Hashed password is : ", hashedPassword); // Debugging
 
       const insertQuery = `
         INSERT INTO bussinessuser_table
@@ -164,13 +164,13 @@ app.post("/businessLogin", async (req, res) => {
       const user = result[0];
       try {
         const passwordToCheck = password.trim(); // Trim the password to remove any extra spaces
-        console.log("Password is : ", passwordToCheck); // Debugging
-        console.log("From db password is : ", user.password); // Debugging
+       // console.log("Password is : ", passwordToCheck); // Debugging
+        //console.log("From db password is : ", user.password); // Debugging
         const isPasswordValid = await bcrypt.compare(
           passwordToCheck,
           user.password
         ); // Await
-        console.log("Is password valid:", isPasswordValid); // Debugging
+       //console.log("Is password valid:", isPasswordValid); // Debugging
 
         if (!isPasswordValid) {
           return res.status(401).json({ err: "Invalid credentials" });
@@ -216,13 +216,13 @@ app.post("/clientLogin", async (req, res) => {
       const user = result[0];
       try {
         const passwordToCheck = password.trim(); // Trim the password to remove any extra spaces
-        console.log("Password is : ", passwordToCheck); // Debugging
-        console.log("From db password is : ", user.password); // Debugging
+        //console.log("Password is : ", passwordToCheck); // Debugging
+        //console.log("From db password is : ", user.password); // Debugging
         const isPasswordValid = await bcrypt.compare(
           passwordToCheck,
           user.password
         ); // Await
-        console.log("Is password valid:", isPasswordValid); // Debugging
+        //console.log("Is password valid:", isPasswordValid); // Debugging
 
         if (!isPasswordValid) {
           return res.status(401).json({ err: "Invalid credentials" });
@@ -437,7 +437,7 @@ app.get("/getGST", async (req, res) => {
 });
 
 app.post("/saveInvoice", async (req, res) => {
-  console.log(res.status);
+  //console.log(res.status);
   const {
     name,
     companyName,
@@ -544,7 +544,7 @@ app.post("/saveInvoiceChangesToDataBase", async (req, res) => {
           item.itemQty,
           item.itemGST,
         ]);
-        console.log(itemValues);
+       // console.log(itemValues);
         db.query(insertQuery, [itemValues], (err) => {
           if (err) {
             console.error("Error inserting new invoice items:", err);
@@ -561,7 +561,7 @@ app.post("/saveInvoiceChangesToDataBase", async (req, res) => {
 
 app.get("/recentInvoice", (req, res) => {
   const email = req.query.email;
-  console.log("The email is: ", email);
+ // console.log("The email is: ", email);
   if (!email) {
     return res.status(400).json({ error: "email is required" });
   }
@@ -721,7 +721,7 @@ app.get("/companyName", async (req, res) => {
 
 app.get("/allInvoicesCreated", (req, res) => {
   const email = req.query.email;
-  console.log("The email is: ", email);
+ // console.log("The email is: ", email);
   if (!email) {
     return res.status(400).json({ error: "email is required" });
   }
@@ -734,7 +734,7 @@ app.get("/allInvoicesCreated", (req, res) => {
     if (result.length === 0) {
       return res.status(200).json({ invoice: null });
     }
-    console.log(result);
+    //console.log(result);
     res.status(200).json({ data: result });
   });
 });
@@ -746,7 +746,7 @@ app.post("/generateInvoicePDF", async (req, res) => {
     const page = await browser.newPage();
     // Generate HTML for the invoice
     let itemsHtml = "";
-    console.log("Items are :", req.body.lines);
+    //console.log("Items are :", req.body.lines);
     req.body.lines.forEach((item) => {
       itemsHtml += ` <tr>
           <td>${item.description}</td>
@@ -1041,7 +1041,7 @@ app.get("/getTrackInvoicesData", (req, res) => {
   const query = "SELECT * from allinvoices_table WHERE billerEmail = ?";
   db.query(query, [email], (err, result) => {
     if (err) return res.status(500).json({ error: "Database error" });
-    console.log(result);
+    //console.log(result);
     if (result.length === 0)
       return res.status(404).json({ error: "No invoices generated yet" });
     //console.log(result);
@@ -1091,14 +1091,14 @@ app.get("/getReportData", (req, res) => {
             }
             const companyName = result5[0].billerCompany;
 
-            console.log("Company name is : ",companyName);
+            //console.log("Company name is : ",companyName);
 
             const query6 =
               "SELECT COUNT(DISTINCT email) AS totalClients FROM businessclients_table WHERE companyName = ?";
             db.query(query6, [companyName], (err, result6) => {
               if (err) return res.status(500).json({ error: "Database error" });
               const totalClients = result6[0].totalClients;
-              console.log("Total clients are: ",totalClients);
+             // console.log("Total clients are: ",totalClients);
 
               res.status(200).json({
                 totalClients,
@@ -1172,6 +1172,19 @@ app.post("/updateClient", (req, res) => {
       return res.status(404).json({ error: "Client not found" });
     }
     res.status(200).json({ message: "Client updated successfully" });
+  });
+});
+
+app.get("/getClientInvoices", (req, res) => {
+  const email = req.query.email;
+  const query = "SELECT * FROM allinvoices_table WHERE clientEmail = ?";
+  db.query(query, [email], (err, result) => {
+    if (err) {
+      console.error("Error fetching invoices:", err);
+      return res.status(500).json({ error: "Failed to fetch invoices" });
+    }
+    //console.log("Invoices fetched:", result);
+    return res.json(result);
   });
 });
 
