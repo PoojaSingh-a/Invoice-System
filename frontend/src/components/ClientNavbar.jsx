@@ -7,17 +7,12 @@ import "react-toastify/dist/ReactToastify.css";
 const ClientNavbar = () => {
   const navigate = useNavigate();
 
-  const NavigateToHome = () => {
-    navigate('/bussinessDashboard');
+  const NavigateToContact = () => {
+    navigate('/clientsidecontactUs');
   };
-  const NavigateToInvoice = () => {
-    navigate('/allInvoices');
-  };
+
   const NavigateToClientHome = () => {
     navigate('/clientDashboard');
-  };
-  const NavigateToReport = () => {
-    navigate('/bussinessReport');
   };
 
   const handleLogout = async () => {
@@ -41,7 +36,7 @@ const ClientNavbar = () => {
       <h2 className="text-white font-bold text-4xl mt-10 ml-5">Client Dashboard</h2>
       <div className="text-2xl mt-20 ml-7">
         <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToClientHome}>Home</h3>
-        <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToInvoice}>Contact</h3>
+        <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToContact}>Contact Us</h3>
         <h3 className="options text-white mt-6 cursor-pointer" onClick={handleLogout}>Logout</h3>
       </div>
     </div>

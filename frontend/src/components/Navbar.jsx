@@ -20,20 +20,24 @@ const Navbar = () => {
     navigate('/bussinessReport');
   };
 
+  const NavigateToContact = () => {
+    navigate('/businesssidecontactUs');
+  };
+
   const handleLogout = async () => {
-    if(window.confirm("Sure you want to logout?")) {
-    try {
-      const response = await axios.post('http://localhost:5000/logout', {}, { withCredentials: true });
-      if (response.status === 200) {
-        toast.error(response.data.msg);
-        setTimeout(() => {
-          navigate("/");
-        }, 1000);
+    if (window.confirm("Sure you want to logout?")) {
+      try {
+        const response = await axios.post('http://localhost:5000/logout', {}, { withCredentials: true });
+        if (response.status === 200) {
+          toast.error(response.data.msg);
+          setTimeout(() => {
+            navigate("/");
+          }, 1000);
+        }
+      } catch (error) {
+        console.error("Logout failed: ", error);
       }
-    } catch (error) {
-      console.error("Logout failed: ", error);
     }
-  }
   };
 
   return (
@@ -44,6 +48,7 @@ const Navbar = () => {
         <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToInvoice}>Invoices</h3>
         <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToClient}>Clients</h3>
         <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToReport}>Report</h3>
+        <h3 className="options text-white mt-6 cursor-pointer" onClick={NavigateToContact}>Contact Us</h3>
         <h3 className="options text-white mt-6 cursor-pointer" onClick={handleLogout}>Logout</h3>
       </div>
     </div>

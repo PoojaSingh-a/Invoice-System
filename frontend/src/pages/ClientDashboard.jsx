@@ -4,20 +4,22 @@ import ClientNavbar from '../components/ClientNavbar';
 import { ToastContainer, toast } from "react-toastify";
 import { useNavigate } from 'react-router-dom';
 import "react-toastify/dist/ReactToastify.css";
-import { FaRegFolderOpen, FaDownload, FaEnvelopeOpenText } from 'react-icons/fa';
-import { MdTrackChanges } from 'react-icons/md';
+import { FaRegFolderOpen, FaDownload, FaEnvelopeOpenText} from 'react-icons/fa';
 import { FiAlertCircle } from 'react-icons/fi';
 import { BsCardList } from 'react-icons/bs';
+import ClientViewMore from '../components/ClientViewMore';
 
 const ClientDashboard = () => {
   const [name, setName] = useState(null);
   const [email, setEmail] = useState(null);
   const [recentInvoice, setRecentInvoice] = useState(null);
+  const [showFullInvoice, setShowFullInvoice] = useState(null);
+  const [itemList, setItemList] = useState([]);
   const navigate = useNavigate();
 
- /* const fetchRecentInvoice = async () => {
+  const fetchRecentInvoice = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/recentInvoice?email=${email}`, {
+      const res = await fetch(`http://localhost:5000/recentInvoiceIssued?email=${email}`, {
         method: "GET",
         credentials: "include",
       });
@@ -30,7 +32,7 @@ const ClientDashboard = () => {
     } catch (error) {
       setRecentInvoice(null);
     }
-  };*/
+  };
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -50,6 +52,7 @@ const ClientDashboard = () => {
       }
     };
     fetchUserData();
+    fetchRecentInvoice();
   }, [email]);
 
   const navigateTo = (path) => navigate(path);
@@ -57,6 +60,21 @@ const ClientDashboard = () => {
   const downloadInvoice = () => {
     if (!recentInvoice) return;
     window.open(`http://localhost:5000/downloadInvoice/${recentInvoice.invoiceNumber}`, "_blank");
+  };
+
+   const fetchItemList = async (invoiceNumber) => {
+    try {
+      const response = await fetch(`http://localhost:5000/getEditInvoiceData?invoiceNumber=${invoiceNumber}`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setItemList(data.items || []);
+      }
+    } catch (error) {
+      console.error("Error fetching item list:", error);
+    }
   };
 
   const getStatus = (dueDate) => {
@@ -89,7 +107,7 @@ const ClientDashboard = () => {
 
               <button
                 className="group flex items-center justify-between gap-4 bg-white rounded-xl p-4 border text-lg border-blue-600 hover:bg-blue-600 hover:text-white transition duration-300 shadow-md"
-                onClick={downloadInvoice}
+                onClick={() => navigateTo("/downloadInvoices")}
               >
                 <FaDownload size={22} className="text-blue-600 group-hover:text-white" />
                 Download Invoice
@@ -104,7 +122,7 @@ const ClientDashboard = () => {
               {recentInvoice ? (
                 <>
                   <p className="mt-2 text-gray-700">
-                    <span className="font-semibold">Invoice #:</span> {recentInvoice.invoiceNumber}
+                    <span className="font-semibold">Invoice:</span> {recentInvoice.invoiceNumber}
                   </p>
                   <p className="mt-2 text-gray-700">
                     <span className="font-semibold">Client:</span> {recentInvoice.clientName}
@@ -114,15 +132,24 @@ const ClientDashboard = () => {
                     <span className="text-red-600">{new Date(recentInvoice.dueDate).toLocaleDateString()}</span>
                   </p>
                   <p className="mt-2 text-gray-700 flex items-center gap-2">
-                    <FiAlertCircle className="text-orange-600" />
-                    <span>Status: </span>
-                    <span className={getStatus(recentInvoice.dueDate) === 'Overdue' ? 'text-red-500 font-semibold' : 'text-green-500 font-semibold'}>
-                      {getStatus(recentInvoice.dueDate)}
+                    <span className='font-bold'>Status: </span>
+                    <span className='flex items-center gap-2'>
+                      {getStatus(recentInvoice.dueDate) === 'Overdue' ? (
+                        <>
+                        <FiAlertCircle className='text-red-600'/>
+                        <span className='text-red-600 font-semibold'>Overdue</span>
+                        </>
+                      ) : (
+                        <span className='text-green-500 font-semibold'>Pending</span>
+                      )}
                     </span>
                   </p>
                   <p
-                    className="mt-4 text-md text-indigo-700 hover:text-purple-700 cursor-pointer font-semibold"
-                    onClick={() => navigate(`/InvoiceReadMore/${recentInvoice.invoiceNumber}`)}
+                    className="mt-4 text-md text-indigo-700 hover:text-green-700 cursor-pointer font-semibold"
+                    onClick={() => {
+                          setShowFullInvoice(recentInvoice);
+                          fetchItemList(recentInvoice.invoiceNumber);
+                        }}
                   >
                     View More →
                   </p>
@@ -135,6 +162,13 @@ const ClientDashboard = () => {
         </div>
       </div>
       <ToastContainer position="top-right" autoClose={3000} />
+      {showFullInvoice && (
+        <ClientViewMore
+          invoice={showFullInvoice}
+          itemList={itemList}
+          onClose={() => setShowFullInvoice(null)}
+        />
+      )}
       <Footer />
     </div>
   );

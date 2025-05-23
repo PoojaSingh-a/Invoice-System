@@ -31,7 +31,6 @@ const EditInvoiceForm = () => {
   const addLine = () => {
     setItems([...items, { invoiceNumber: selectedInvoiceNumber, itemDesc: '', itemRate: 0, itemQty: 0, itemGST: 0 }]);
   };
-
   //runs after every render
   useEffect(() => {
     const fetchInvoicesNumber = async () => {
@@ -84,7 +83,6 @@ const EditInvoiceForm = () => {
     };
     fetchData(); // Call fetchData after defining it
   }, []);
-
   //When we select a invoice from the dropdown then this 
   //fetch all corrsponding details related to that invoice number
   const handleInvoiceChange = async (e) => {
@@ -245,7 +243,6 @@ const EditInvoiceForm = () => {
       rate: item.itemRate,
       gst: item.itemGST,
     }));
-
     event.preventDefault();
     // Check if selectedClient is defined
     if (!selectedClient) {
@@ -254,14 +251,16 @@ const EditInvoiceForm = () => {
     }
     const name = selectedClient.replace(/\s+/g, "").toLowerCase();
     const email = name + "@resend.dev"; // Dummy email, replace later.
+    console.log("Email is : ",email);
     console.log("Data to form is : ", items, selectedInvoiceNumber);
+    console.log(lines);
     try {
       // Step 1: Generate Invoice PDF
       const pdfResponse = await fetch("http://localhost:5000/generateInvoicePDF", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          lines: linesToSend, name, companyName, bemail, phone, city, selectedClient, selectedEmail,
+          item: items, name, companyName, bemail, phone, city, selectedClient, selectedEmail,
           issueDate, dueDate, selectedInvoiceNumber, subTotal, gstTotal, grandTotal,
         }),
       });
@@ -269,7 +268,6 @@ const EditInvoiceForm = () => {
       if (!pdfResponse.ok) {
         throw new Error("Failed to generate invoice PDF.");
       }
-
       // Convert response into a Blob
       const pdfBlob = await pdfResponse.blob();
       const pdfUrl = URL.createObjectURL(pdfBlob);
@@ -285,7 +283,7 @@ const EditInvoiceForm = () => {
       const googleCalendarLink = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&&dates=${startDateTime}/${endDateTime}&details=${eventDescription}`;
       console.log("Sender email is : ", email);
       console.log("Recipient email is : ", selectedEmail);
-      /* const emailResponse = await fetch("http://localhost:5000/sendInvoiceEmail", {
+       const emailResponse = await fetch("http://localhost:5000/sendInvoiceEmail", {
          method: "POST",
          headers: { "Content-Type": "application/json" },
          body: JSON.stringify({
@@ -302,7 +300,7 @@ const EditInvoiceForm = () => {
          alert("Invoice sent successfully!");
        } else {
          alert("Failed to send invoice email.");
-       }*/
+       }
     } catch (error) {
       console.error("Error:", error);
       alert("Something went wrong!");
@@ -360,7 +358,6 @@ const EditInvoiceForm = () => {
             ))}
           </select>
 
-
         </div>
         <form action="" className='mt-4 mb-7 bg-white p-6 rounded shadow-lg'>
           <div className='flex flex-col bg-zinc-100 p-3 rounded'>
@@ -379,7 +376,7 @@ const EditInvoiceForm = () => {
               </div>
             </div>
             <div className='flex flex-col w-1/4'>
-              <div className='text-gray-700'>Date of issue</div>
+              <div className='text-gray-700'>Issue Date</div>
               <input className='bg-zinc-200 p-2 rounded mt-2' type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
               <div className='text-gray-700 mt-4'>Due Date</div>
               <input className='bg-zinc-200 p-2 rounded mt-2' type="date" value={dueDate} onChange={(e) => setdueDate(e.target.value)} />
