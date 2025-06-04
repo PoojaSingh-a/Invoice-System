@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import { ToastContainer, toast } from "react-toastify";
 import { useNavigate } from 'react-router-dom';
 import "react-toastify/dist/ReactToastify.css";
-import { FaPlusCircle, FaEdit} from 'react-icons/fa'; // Icons
+import { FaPlusCircle, FaEdit} from 'react-icons/fa'; // for icons
 import { MdTrackChanges } from 'react-icons/md';
 import {FaRegFolderOpen} from 'react-icons/fa';
 import {BsCardList} from 'react-icons/bs';

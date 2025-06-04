@@ -9,8 +9,8 @@ import RegisterModal from "../components/RegisterModal.jsx";
 const images = Object.values(import.meta.glob("../assets/*.png", { eager: true })).map((img) => img.default);
 
 const Index = () => {
-  const [showLoginModal,setShowLoginModal] = useState(false);
-  const [showRegisterModal,setShowRegisterModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
 
   const handleLoginClick = () => {
     setShowLoginModal(true);
@@ -60,7 +60,7 @@ const Index = () => {
         {/* Right Section with Swiper Carousel */}
         <div className="w-1/3 flex items-center justify-center p-10">
           <Swiper
-            modules={[Autoplay]} 
+            modules={[Autoplay]}
             spaceBetween={20}
             slidesPerView={1}
             autoplay={{ delay: 2000, disableOnInteraction: false }}
@@ -80,13 +80,13 @@ const Index = () => {
       <Footer />
       {showLoginModal && (
         <div className="fixed inset-0 z-50">
-          <LoginModal onClose={handleCloseLoginModal}/>
-          </div>
+          <LoginModal onClose={handleCloseLoginModal} />
+        </div>
       )}
       {showRegisterModal && (
         <div className="fixed inset-0 z-50">
-          <RegisterModal onClose={handleCloseRegisterModal}/>
-          </div>
+          <RegisterModal onClose={handleCloseRegisterModal} />
+        </div>
       )}
     </div>
   );

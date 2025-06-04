@@ -10,6 +10,8 @@ const puppeteer = require("puppeteer");
 const path = require("path");
 const fs = require("fs");
 const { google } = require("googleapis");
+const sendFeedbackEmail = require("./sendFeedbackEmail");
+const sendIssueEmail = require("./sendIssueEmail");
 
 const app = express();
 const SECRET_KEY = "key";
@@ -26,7 +28,7 @@ app.use(bodyParser.json({ limit: "50mb" })); // increases the allowed payload si
 app.use(bodyParser.urlencoded({ limit: "50mb", extended: true })); //ensures that complex json objects are properly parsed.
 app.use(express.json());
 app.use(cookieParser());
-app.use("/invoices", express.static(path.join(__dirname, "invoices"))); // Serve static files (PDFs)
+//app.use("/invoices", express.static(path.join(__dirname, "invoices"))); // Serve static files (PDFs)
 
 const db = mysql.createConnection({
   host: "localhost",
@@ -64,14 +66,9 @@ app.post("/clientRegisteration", async (req, res) => {
     }
 
     try {
-      const hashedPassword = await bcrypt.hash(password, 10);
-
+      const hashedPassword = await bcrypt.hash(password, 10); //store hashed passowrd in the db for security
       const insertQuery = `INSERT INTO clientuser_table (fullname, email, password, city) VALUES (?, ?, ?, ?)`;
-
-      db.query(
-        insertQuery,
-        [fullname, email, hashedPassword, city],
-        (err, result) => {
+      db.query(insertQuery,[fullname, email, hashedPassword, city],(err, result) => {
           if (err) {
             console.error("Error inserting data:", err);
             return res.status(500).json({ message: "Error inserting data" });
@@ -87,18 +84,7 @@ app.post("/clientRegisteration", async (req, res) => {
 });
 
 app.post("/businessRegisteration", async (req, res) => {
-  const {
-    fullname,
-    email,
-    password,
-    city,
-    phone,
-    companyName,
-    companyWork,
-    revenue,
-    currentMethod,
-  } = req.body;
-
+  const {fullname, email,password,city,phone,companyName,companyWork,revenue,currentMethod} = req.body;
   const checkEmailQuery = "SELECT * FROM bussinessuser_table WHERE email = ?";
   db.query(checkEmailQuery, [email], async (err, result) => {
     if (err) {
@@ -107,24 +93,14 @@ app.post("/businessRegisteration", async (req, res) => {
         .status(500)
         .json({ message: "Server error while checking email" });
     }
-
     if (result.length > 0) {
       return res.status(400).json({ message: "Email already registered" });
     }
 
     try {
-      //console.log("Password is : ", password); // Debugging
       const hashedPassword = await bcrypt.hash(password, 10);
-      //console.log("Hashed password is : ", hashedPassword); // Debugging
-
-      const insertQuery = `
-        INSERT INTO bussinessuser_table
-        (fullname, email, password, city, phone, companyName, companyDo, estRevenue, currMethod, userType)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
-
-      db.query(
-        insertQuery,
+      const insertQuery = `INSERT INTO bussinessuser_table (fullname, email, password, city, phone, companyName, companyDo, estRevenue, currMethod, userType) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+      db.query(insertQuery,
         [
           fullname,
           email,
@@ -163,15 +139,11 @@ app.post("/businessLogin", async (req, res) => {
     if (result.length > 0) {
       const user = result[0];
       try {
-        const passwordToCheck = password.trim(); // Trim the password to remove any extra spaces
-       // console.log("Password is : ", passwordToCheck); // Debugging
-        //console.log("From db password is : ", user.password); // Debugging
+        const passwordToCheck = password.trim(); 
         const isPasswordValid = await bcrypt.compare(
           passwordToCheck,
           user.password
-        ); // Await
-       //console.log("Is password valid:", isPasswordValid); // Debugging
-
+        ); 
         if (!isPasswordValid) {
           return res.status(401).json({ err: "Invalid credentials" });
         }
@@ -277,14 +249,12 @@ app.get("/check-auth", (req, res) => {
 app.get("/bussinessDashboard", (req, res) => {
   token = req.cookies.authToken;
   if (!token) return res.status(401).json({ error: "Unauthorized: No Token" });
-
   jwt.verify(token, SECRET_KEY, (err, decoded) => {
     if (err)
       return res.status(401).json({ error: "Unauthorized: Invalid Token" });
 
-    email = decoded.email;
-    const query =
-      "SELECT fullname,email FROM bussinessuser_table WHERE email = ?";
+    email = decoded.email; //we signed email in token so we can use it here
+    const query = "SELECT fullname,email FROM bussinessuser_table WHERE email = ?";
     db.query(query, [email], (err, result) => {
       if (err) return res.status(500).json({ error: "Database error" });
       if (result.length > 0) {
@@ -356,9 +326,8 @@ app.get("/generateInvoice", (req, res) => {
     });
 
     const first2Char = (companyName || "XX").substring(0, 2).toUpperCase();
-
     const prefix = `INV${first2Char}`;
-    const query3 = `SELECT invoiceNumber from allinvoices_table WHERE invoiceNumber LIKE ? ORDER BY CAST(SUBSTRING(invoiceNumber,5+1+2) AS UNSIGNED) DESC LIMIT 1`;
+    const query3 = `SELECT invoiceNumber FROM allinvoices_table WHERE invoiceNumber LIKE ? ORDER BY CAST(SUBSTRING(invoiceNumber, 6) AS UNSIGNED) DESC LIMIT 1`;
     db.query(query3, [`${prefix}%`], (err, invoice) => {
       if (err) {
         return res
@@ -400,16 +369,12 @@ app.get("/generateInvoice", (req, res) => {
 
 app.get("/getGST", async (req, res) => {
   const { description } = req.query;
-
   try {
     if (!description) {
       return res.status(400).json({ error: "Missing description parameter" });
     }
-
     //console.log("Received description:", description); // Debugging
-
     const query = "SELECT item_gst FROM invoiceitems_table WHERE item_desc = ?";
-
     // Use a Promise to handle the database query properly
     db.query(query, [description], (err, results) => {
       if (err) {
@@ -418,9 +383,7 @@ app.get("/getGST", async (req, res) => {
           .status(500)
           .json({ error: "Database error while fetching GST" });
       }
-
       // console.log("Query result:", results); // Debugging
-
       if (results.length > 0) {
         const gst = results[0].item_gst;
         // console.log("GST from database:", gst);
@@ -511,13 +474,15 @@ app.post("/saveInvoiceChangesToDataBase", async (req, res) => {
     subTotal,
     gstTotal,
     grandTotal,
+    status
   } = req.body;
-  //console.log(items);/
+  console.log("Items coming are : ",issueDate,dueDate,selectedInvoiceNumber,items,subTotal,gstTotal,grandTotal,status);
+  
   const invoiceQuery =
-    "UPDATE allinvoices_table SET issueDate = ?, dueDate = ? WHERE invoiceNumber = ?";
+    "UPDATE allinvoices_table SET issueDate = ?, dueDate = ?, status = ? WHERE invoiceNumber = ?";
   db.query(
     invoiceQuery,
-    [issueDate, dueDate, selectedInvoiceNumber],
+    [issueDate, dueDate,status, selectedInvoiceNumber],
     (err, result) => {
       if (err) {
         console.error("Error updating invoice details:", err);
@@ -544,7 +509,7 @@ app.post("/saveInvoiceChangesToDataBase", async (req, res) => {
           item.itemQty,
           item.itemGST,
         ]);
-       // console.log(itemValues);
+        // console.log(itemValues);
         db.query(insertQuery, [itemValues], (err) => {
           if (err) {
             console.error("Error inserting new invoice items:", err);
@@ -561,7 +526,7 @@ app.post("/saveInvoiceChangesToDataBase", async (req, res) => {
 
 app.get("/recentInvoice", (req, res) => {
   const email = req.query.email;
- // console.log("The email is: ", email);
+  // console.log("The email is: ", email);
   if (!email) {
     return res.status(400).json({ error: "email is required" });
   }
@@ -570,8 +535,7 @@ app.get("/recentInvoice", (req, res) => {
   SELECT * FROM allinvoices_table 
   WHERE billerEmail = ? 
   ORDER BY CAST(SUBSTRING(invoiceNumber, 6) AS UNSIGNED) DESC 
-  LIMIT 1
-`;
+  LIMIT 1`;
 
   db.query(query, [email], (err, result) => {
     if (err) {
@@ -721,7 +685,7 @@ app.get("/companyName", async (req, res) => {
 
 app.get("/allInvoicesCreated", (req, res) => {
   const email = req.query.email;
- // console.log("The email is: ", email);
+  // console.log("The email is: ", email);
   if (!email) {
     return res.status(400).json({ error: "email is required" });
   }
@@ -740,7 +704,7 @@ app.get("/allInvoicesCreated", (req, res) => {
 });
 
 app.post("/generateInvoicePDF", async (req, res) => {
-  //console.log("Date coming in backend is : ",req.body.dueDate);
+  //console.log("Data coming here is: ",req.body);
   try {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
@@ -1049,7 +1013,6 @@ app.get("/getTrackInvoicesData", (req, res) => {
   });
 });
 
-//report data
 app.get("/getReportData", (req, res) => {
   const email = req.query.email;
   if (!email) {
@@ -1084,10 +1047,13 @@ app.get("/getReportData", (req, res) => {
           const totalRevenue = parseFloat(result4[0].totalRevenue) || 0;
 
           // Get company name from billerEmail
-          const query5 = "SELECT billerCompany FROM allinvoices_table WHERE billerEmail = ? LIMIT 1";
+          const query5 =
+            "SELECT billerCompany FROM allinvoices_table WHERE billerEmail = ? LIMIT 1";
           db.query(query5, [email], (err, result5) => {
             if (err || result5.length === 0) {
-              return res.status(500).json({ error: "Could not fetch company name" });
+              return res
+                .status(500)
+                .json({ error: "Could not fetch company name" });
             }
             const companyName = result5[0].billerCompany;
 
@@ -1098,7 +1064,7 @@ app.get("/getReportData", (req, res) => {
             db.query(query6, [companyName], (err, result6) => {
               if (err) return res.status(500).json({ error: "Database error" });
               const totalClients = result6[0].totalClients;
-             // console.log("Total clients are: ",totalClients);
+              // console.log("Total clients are: ",totalClients);
 
               res.status(200).json({
                 totalClients,
@@ -1186,6 +1152,338 @@ app.get("/getClientInvoices", (req, res) => {
     //console.log("Invoices fetched:", result);
     return res.json(result);
   });
+});
+
+app.post("/downloadPDF", async (req, res) => {
+  const invoiceNumber = req.query.invoiceNumber;
+  if (!invoiceNumber) {
+    return res
+      .status(400)
+      .json({ sucess: false, message: "Invoice number is required." });
+  }
+  //first fetch all the data for pdf generation acc. to invoiceNumber
+  const query1 = `SELECT * FROM allinvoices_table WHERE invoiceNumber = ?`;
+  db.query(query1, [invoiceNumber], (err, invoiceData) => {
+    if (err) {
+      console.error("Error fetching Invoice Data", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Error fetching Invoice data" });
+    }
+    if (invoiceData.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Invoice not found" });
+    }
+    const invoice = invoiceData[0];
+    //console.log("Invoice data : ", invoice);
+    const query2 = `SELECT * FROM invoiceselecteditems_table WHERE invoiceNumber = ?`;
+    db.query(query2, [invoiceNumber], async (err, items) => {
+      if (err) {
+        console.error("Error fetching Invoice items", err);
+        return res
+          .status(500)
+          .json({ success: false, message: "Error fetching Invoice data" });
+      }
+      if (items.length === 0) {
+        console.log(`No items found for invoice ${invoiceNumber}. Generating empty Invoice.`)
+      }
+      //console.log("Items : ", items);
+
+      let gstTotal = 0;
+      let grandTotal = 0;
+      let itemsHtml = "";
+      items.forEach((item) => {
+        const rate = Number(item.itemRate) || 0;
+        const qty = Number(item.itemQty) || 0;
+        const gst = Number(item.itemGST) || 0;
+
+        const lineTotal = rate * qty;
+        const gstAmount = (lineTotal * gst) / 100;
+
+        gstTotal += gstAmount;
+        grandTotal += lineTotal + gstAmount;
+
+        itemsHtml += `
+    <tr>
+      <td>${item.itemDesc || ""}</td>
+      <td>₹${rate.toFixed(2)}</td>
+      <td>${qty}</td>
+      <td>₹${lineTotal.toFixed(2)}</td>
+      <td>₹${(lineTotal + gstAmount).toFixed(2)}</td>
+    </tr>`;
+      });
+
+      const content = `
+             <!DOCTYPE html>
+             <html lang="en">
+             <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Invoice Form</title>
+              <style>
+                  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+  
+               body {
+                font-family: 'Poppins', sans-serif;
+                background-color: #f8f9fa;
+                margin: 0;
+                padding: 20px;
+              }
+  
+              .outer {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+              background: #fff;
+              padding: 20px;
+              max-width: 800px;
+              margin: auto;
+              border-radius: 10px;
+              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+          }
+  
+          .headingDiv {
+              text-align: center;
+              width: 100%;
+              padding-bottom: 10px;
+          }
+  
+          .heading {
+              font-size: 26px;
+              font-weight: 600;
+              color: #333;
+          }
+  
+          hr {
+              width: 100%;
+              border: none;
+              height: 2px;
+              background: #ddd;
+              margin: 10px 0;
+          }
+  
+          .content {
+              width: 100%;
+              padding: 20px;
+          }
+  
+          .section {
+              background-color: #f1f1f1;
+              padding: 15px;
+              border-radius: 8px;
+              margin-bottom: 15px;
+          }
+  
+          .invoiceDetails2 {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 15px;
+          }
+  
+          .invoiceDetails2 div {
+              flex: 1;
+              min-width: 150px;
+          }
+  
+          p {
+              margin: 5px 0;
+          }
+  
+          input[type="date"] {
+              border: 1px solid #ccc;
+              padding: 6px;
+              width: 100%;
+              border-radius: 4px;
+              background: white;
+              font-size: 14px;
+          }
+  
+          .table-container {
+              margin-top: 20px;
+              overflow-x: auto;
+          }
+  
+          table {
+              width: 100%;
+              border-collapse: collapse;
+              background: white;
+          }
+  
+          th, td {
+              padding: 10px;
+              text-align: left;
+              border: 1px solid #ddd;
+          }
+  
+          th {
+              background: #007bff;
+              color: white;
+          }
+  
+          .totalAmount {
+              text-align: right;
+              margin-top: 20px;
+              font-size: 16px;
+              font-weight: 600;
+          }
+      </style>
+  </head>
+  <body>
+  
+      <div class="outer">
+          <div class="headingDiv">
+              <h3 class="heading">Invoice Form</h3>
+          </div>
+          <hr />
+  
+          <div class="content">
+              <!-- Sender Details -->
+              <div class="section">
+                  <p><b>Name:</b> ${invoice.billedBy}</p>
+                  <p><b>Company:</b> ${invoice.billerCompany}</p>
+                  <p><b>Phone:</b> ${invoice.billerPhone}</p>
+                  <p><b>Address:</b> ${invoice.billerCity}</p>
+              </div>
+  
+              <!-- Invoice Details -->
+              <div class="section">
+                  <div>
+                      <p><b>Billed to:</b> ${invoice.clientName}</p>
+                      <p>${invoice.clientEmail}</p>
+                  </div>
+                  <div class="invoiceDetails2">
+                      <div>
+                          <p><b>Issue Date:</b></p>
+                         <input type="date" value="${
+                           invoice.issueDate.toISOString().split("T")[0]
+                         }" />
+                      </div>
+                      <div>
+                          <p><b>Due Date:</b></p>
+                          <input type="date" value="${
+                            invoice.dueDate.toISOString().split("T")[0]
+                          }" />
+                      </div>
+                      <div>
+                          <p><b>Invoice Number:</b> ${invoice.invoiceNumber}</p>
+                      </div>
+                      <div>
+                          <p><b>Total Amount:</b> ₹${invoice.grandTotal}</p>
+                      </div>
+                  </div>
+              </div>
+  
+              <!-- Item Details -->
+              <div class="table-container">
+                  <p style="font-weight: bold;">Item List</p>
+                  <table>
+                      <thead>
+                          <tr>
+                              <th>Description</th>
+                              <th>Rate (₹)</th>
+                              <th>Qty</th>
+                              <th>Line Total (₹)</th>
+                              <th>After GST (₹)</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          ${itemsHtml}
+                      </tbody>
+                  </table>
+              </div>
+  
+              <!-- Total Amount -->
+              <div class="totalAmount">
+                  <p><b>GST Total:</b> ₹${gstTotal.toFixed(2)}</p>
+                  <p><b>Grand Total:</b> ₹${grandTotal.toFixed(2)}</p>
+              </div>
+          </div>
+      </div>
+  </body>
+  </html>`;
+
+      try {
+        const browser = await puppeteer.launch();
+        const page = await browser.newPage();
+        await page.setContent(content);
+        const pdfBuffer = await page.pdf({ format: "A4" });
+        await browser.close();
+
+        res.set({
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename=Invoice_${invoiceNumber}.pdf`,
+          "Content-Length": pdfBuffer.length,
+        });
+        res.end(pdfBuffer);
+      } catch (error) {
+        console.error("PDF generation error: ", error);
+        res
+          .status(500)
+          .json({ sucess: false, message: "Internal server error" });
+      }
+    });
+  });
+});
+
+app.get("/recentInvoiceIssued", (req, res) => {
+  const email = req.query.email;
+ // console.log("The email is: ", email);
+  if (!email) {
+    return res.status(400).json({ error: "email is required" });
+  }
+
+  const query = `
+  SELECT * FROM allinvoices_table 
+  WHERE clientEmail = ? 
+  ORDER BY CAST(SUBSTRING(invoiceNumber, 6) AS UNSIGNED) DESC 
+  LIMIT 1
+`;
+
+  db.query(query, [email], (err, result) => {
+    if (err) {
+      console.error("Error fetching invoice:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+
+    if (result.length === 0) {
+      return res.status(200).json({ invoice: null });
+    }
+    //console.log("Recent invoice is: ",result[0]);
+    res.status(200).json({ invoice: result[0] });
+  });
+});
+
+app.post("/sendFeedbackEmail", async (req, res) => {
+  const { senderEmail, senderName,category, message } = req.body;
+
+  if (!senderEmail || !message) {
+    return res.status(400).json({ success: false, message: "Missing required fields" });
+  }
+
+  try {
+    await sendFeedbackEmail(senderEmail, senderName,category, message);
+    res.json({ success: true, message: "Feedback email sent successfully" });
+  } catch (error) {
+    console.error("Error sending email:", error);
+    res.status(500).json({ success: false, message: "Failed to send email" });
+  }
+});
+
+app.post("/sendIssueEmail", async (req, res) => {
+  const { senderEmail, senderName, category, severity, message } = req.body;
+
+  if (!senderEmail || !message) {
+    return res.status(400).json({ success: false, message: "Missing required fields" });
+  }
+
+  try {
+    await sendIssueEmail(senderEmail, senderName, category, severity, message);
+    res.json({ success: true, message: "Issue email sent successfully" });
+  } catch (error) {
+    console.error("Error sending email:", error);
+    res.status(500).json({ success: false, message: "Failed to send email" });
+  }
 });
 
 app.listen(5000, () => {

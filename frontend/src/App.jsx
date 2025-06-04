@@ -20,7 +20,7 @@ import ClientSideDownlaodInvoices from "./pages/ClientSideDownloadInvoices";
 import ClientSideContactUs from "./pages/ClientSideContactUs";
 import BusinessSideContactUs from "./pages/BusinessSideContactUs";
 
-const App = () => {
+const App = () => { 
   return (
     <Router>
       <Routes>
@@ -44,7 +44,6 @@ const App = () => {
         </Route>
       </Routes>
       
-      {/* ✅ Global ToastContainer */}
       <ToastContainer position="top-right" autoClose={3000} />
     </Router>
   );

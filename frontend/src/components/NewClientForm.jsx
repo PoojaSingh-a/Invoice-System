@@ -5,7 +5,7 @@ const NewClientForm = ({ onClose,companyName }) => {
     fullname:"",
     email:"",
     phone:"",
-    companyName:companyName, //we need to add the bussiness user who is making the client also
+    companyName:companyName, 
   });
   const handleChange = (e) => {
     setFormData({...formData,[e.target.name]:e.target.value});
@@ -32,7 +32,6 @@ const NewClientForm = ({ onClose,companyName }) => {
       }
     }
     catch(error){
-      //console.error("Error submitting form: ",error);
       alert(error.message);
     }
   };

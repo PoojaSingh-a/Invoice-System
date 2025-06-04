@@ -99,7 +99,7 @@ const EditInvoiceForm = () => {
       });
 
       const data = await response.json();
-      console.log("Fetched Data: ", data); // Log the entire response
+      //console.log("Fetched Data: ", data); // Log the entire response
 
       if (response.ok) {
         setClientName(data.invoice.clientName);
@@ -111,8 +111,8 @@ const EditInvoiceForm = () => {
         setSelectedClient(data.invoice.clientName);
         setSelectedEmail(data.invoice.clientEmail);
 
-        console.log("Updated Selected Client:", data.invoice.clientName);
-        console.log("Updated Selected Email:", data.invoice.clientEmail);
+        //console.log("Updated Selected Client:", data.invoice.clientName);
+        //console.log("Updated Selected Email:", data.invoice.clientEmail);
 
         setItems(data.items || []);
       } else {
@@ -149,7 +149,7 @@ const EditInvoiceForm = () => {
   }
   const handleItemChange = (index, field, value) => {
     const updatedItems = [...items];
-    updatedItems[index][field] = value;
+    updatedItems[index][field] = field === "itemDesc" ? value : Number(value);
     updatedItems[index].lineTotal = updatedItems[index].itemRate * updatedItems[index].itemQty;
     updatedItems[index].gstTotal = updatedItems[index].lineTotal * (updatedItems[index].itemGST / 100);
     setItems(updatedItems);
@@ -162,7 +162,7 @@ const EditInvoiceForm = () => {
     if (!description)
       return;
     try {
-      console.log("Got GST");
+      //console.log("Got GST");
       const response = await fetch(`http://localhost:5000/getGST?description=${encodeURIComponent(description)}`, {
         method: "GET",
         credentials: "include",
@@ -170,7 +170,7 @@ const EditInvoiceForm = () => {
       const data = await response.json();
       if (response.ok) {
         //setgstValue(data.gst);
-        console.log("GST Value : ", data.gst);
+       // console.log("GST Value : ", data.gst);
         if (isItem) {
           setItems(prevItems =>
             prevItems.map((item, i) =>
@@ -203,7 +203,7 @@ const EditInvoiceForm = () => {
       grandTotal,
       status: statusValue,
     };
-    console.log("This data is going to be saveddddd", invoiceData);
+    //console.log("This data is going to be saveddddd", invoiceData);
     try {
       const response = await fetch('http://localhost:5000/saveInvoiceChangesToDataBase', {
         method: "POST",
@@ -236,13 +236,14 @@ const EditInvoiceForm = () => {
 
   //send email to client
   const sendInvoiceEmail = async (event) => {
-    console.log("Item being copied are : ", items.Qty, items.itemRate, items.itemDesc, items.itemGST);
+    console.log("List item going in backend are: ", items.Qty, items.itemRate, items.itemDesc, items.itemGST);
     const linesToSend = items.map(item => ({
       description: item.itemDesc,
-      quantity: item.itemQty,
-      rate: item.itemRate,
-      gst: item.itemGST,
+      rate: Number(item.itemRate),
+      qty: Number(item.itemQty),
+      gst: Number(item.itemGST),
     }));
+    console.log("Lines to send are : ",linesToSend);
     event.preventDefault();
     // Check if selectedClient is defined
     if (!selectedClient) {
@@ -251,17 +252,16 @@ const EditInvoiceForm = () => {
     }
     const name = selectedClient.replace(/\s+/g, "").toLowerCase();
     const email = name + "@resend.dev"; // Dummy email, replace later.
-    console.log("Email is : ",email);
-    console.log("Data to form is : ", items, selectedInvoiceNumber);
-    console.log(lines);
+    //console.log("Email is : ",email);
+    //console.log("Data to form is : ", items, selectedInvoiceNumber);
     try {
       // Step 1: Generate Invoice PDF
       const pdfResponse = await fetch("http://localhost:5000/generateInvoicePDF", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          item: items, name, companyName, bemail, phone, city, selectedClient, selectedEmail,
-          issueDate, dueDate, selectedInvoiceNumber, subTotal, gstTotal, grandTotal,
+          lines: linesToSend, name, companyName, bemail, phone, city, selectedClient, selectedEmail,
+          issueDate, dueDate, invoiceNumber:selectedInvoiceNumber, subTotal, gstTotal, grandTotal,
         }),
       });
 
@@ -281,8 +281,8 @@ const EditInvoiceForm = () => {
       const startDateTime = formatDateForICS(issueDate);
       const endDateTime = formatDateForICS(dueDate);
       const googleCalendarLink = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&&dates=${startDateTime}/${endDateTime}&details=${eventDescription}`;
-      console.log("Sender email is : ", email);
-      console.log("Recipient email is : ", selectedEmail);
+      //console.log("Sender email is : ", email);
+      //console.log("Recipient email is : ", selectedEmail);
        const emailResponse = await fetch("http://localhost:5000/sendInvoiceEmail", {
          method: "POST",
          headers: { "Content-Type": "application/json" },

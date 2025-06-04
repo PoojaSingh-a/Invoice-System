@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { FaEnvelope, FaLock, FaUser } from 'react-icons/fa';
-import { toast, ToastContainer } from 'react-toastify'; // ✅ Fixed: added ToastContainer
+import { toast, ToastContainer } from 'react-toastify'; // 
 import { useLocation, useNavigate } from 'react-router-dom';
 import RegisterModal from "../components/RegisterModal.jsx";
-import 'react-toastify/dist/ReactToastify.css'; // ✅ Optional but recommended if not already included globally
+import 'react-toastify/dist/ReactToastify.css'; // 
 
 const LoginModal = ({ onClose }) => {
     const [email, setEmail] = useState("");

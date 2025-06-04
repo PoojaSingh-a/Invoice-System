@@ -42,7 +42,6 @@ const GenerateInvoice = () => {
           setName(data.name);
           setCompanyName(data.companyName);
           setBemail(data.email);
-          //console.log("Emasillllll ",bemail);
           setPhone(data.phone);
           setCity(data.city);
           setClients(data.allClients);
@@ -85,7 +84,7 @@ const GenerateInvoice = () => {
     if (!description)
       return;
     try {
-      console.log("Got GST");
+     // console.log("Got GST");
       const response = await fetch(`http://localhost:5000/getGST?description=${encodeURIComponent(description)}`, {
         method: "GET",
         credentials: "include",
@@ -157,9 +156,9 @@ const GenerateInvoice = () => {
       itemPriceTotal,
       gstTotal,
       grandTotal,
-      status:statusValue,
+      status: statusValue,
     };
-    console.log("This data is going to be saveddddd",invoiceData);
+   // console.log("This data is going to be saveddddd", invoiceData);
     try {
       const response = await fetch('http://localhost:5000/saveInvoice', {
         method: "POST",
@@ -190,8 +189,6 @@ const GenerateInvoice = () => {
       console.error("Error saving invoice:", error);
       alert("Failed to save invoice.");
     }
-    //clear all input 
-
   };
 
   const deleteItem = (index) => {
@@ -220,16 +217,17 @@ const GenerateInvoice = () => {
   };
 
   function formatDateForICS(date) {
-    const d = new Date(date + 'T00:00:00Z'); 
+    const d = new Date(date + 'T00:00:00Z');
     return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   }
 
   const sendInvoiceEmail = async (event) => {
     event.preventDefault();
-    const name = selectedClient.replace(/\s+/g, "").toLowerCase();
-    const email = name + "@resend.dev"; // Dummy email, replace later.
-    //console.log("Due date is:", dueDate);
-    console.log("In Lines is: ",lines);
+    // const name = selectedClient.replace(/\s+/g, "").toLowerCase();
+    const username = bemail.split("@")[0].replace(/\s+/g, "").toLowerCase();
+    const email = `${username}@invoicesys.in`; // Dummy email, replace later.
+    //WE HAVE TO SET SENDER EMAIL AS THE CURRENT USER LOGGED IN 
+
     try {
       // Step 1: Generate Invoice PDF
       const pdfResponse = await fetch("http://localhost:5000/generateInvoicePDF", {
@@ -259,6 +257,8 @@ const GenerateInvoice = () => {
       const googleCalendarLink = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&&dates=${startDateTime}/${endDateTime}&details=${eventDescription}`;
       //console.log("Calendar link : ",googleCalendarLink);
       //console.log("Selected email address is : ",selectedEmail);
+      //console.log("Senedr Email is : ", email);
+      //console.log("Recipient Email is : ", selectedEmail);
       const emailResponse = await fetch("http://localhost:5000/sendInvoiceEmail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -295,7 +295,7 @@ const GenerateInvoice = () => {
     });
   };
 
-  const handleSendToClient = async(e) => {
+  const handleSendToClient = async (e) => {
     e.preventDefault();
     await saveInvoiceToDataBase("sent");
     await sendInvoiceEmail(e);
@@ -308,12 +308,13 @@ const GenerateInvoice = () => {
           <h3 className='text-3xl font-bold text-blue-700 mt-2'>New Invoice</h3>
           <div className='flex gap-4'>
             <button href="#" className='mt-2 mr-3 bg-red-600 hover:bg-red-700 pt-1 pb-1 pr-4 pl-4 rounded-md text-white' onClick={() => window.history.back()}>Cancel</button>
-            <button className='pt-1 pb-1 pr-4 pl-4 bg-blue-600 text-white mt-2 rounded' onClick={() => {saveInvoiceToDataBase("saved")}}>Save</button>
+            <button className='pt-1 pb-1 pr-4 pl-4 bg-blue-600 text-white mt-2 rounded' onClick={() => { saveInvoiceToDataBase("saved") }}>Save</button>
           </div>
         </div>
         <form action="" className='mt-4 mb-7 bg-white p-6 rounded shadow-lg'>
           <div className='flex flex-col bg-zinc-100 p-3 rounded'>
             <p className='mt-2'><strong>Name:  {name ? `${name}` : "Loading..."}</strong></p>
+            <p className='mt-2'><strong>Email: {bemail ? `${bemail}` : "Loading..."}</strong></p>
             <p className='mt-2'><strong>Company Name:  {companyName ? `${companyName}` : "Loading..."}</strong></p>
             <p className='mt-2'><strong>Phone: {phone ? `${phone}` : "Loading..."}</strong></p>
             <p className='mt-2'><strong>Address: {city ? `${city}` : "Loading..."}</strong></p>

@@ -2,16 +2,15 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 
 const ProtectedRoute = () => {
-    const [isAuthenticated, setIsAuthenticated] = useState(null); // Null means "checking auth"
+    const [isAuthenticated, setIsAuthenticated] = useState(null); 
 
     useEffect(() => {
         const checkAuth = async () => {
             try {
                 const response = await fetch("http://localhost:5000/check-auth", {
                     method: "GET",
-                    credentials: "include", // IMPORTANT to send cookies
+                    credentials: "include", 
                 });
-                //From backend userType is also coming here we can later use it to check which logged in user can access which route
                 const data = await response.json();
                 if (data.authenticated) {
                     setIsAuthenticated(true);
@@ -24,7 +23,6 @@ const ProtectedRoute = () => {
                 setIsAuthenticated(false);
             }
         };
-
         checkAuth();
     }, []);
 
